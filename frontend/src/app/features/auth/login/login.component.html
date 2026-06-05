@@ -1,0 +1,73 @@
+<div class="login-container">
+  <div class="login-card">
+    <!-- En-tête du formulaire -->
+    <div class="login-header">
+      <h2>Plateforme de Dédouanement</h2>
+      <p>Connectez-vous à votre compte</p>
+    </div>
+
+    <!-- Formulaire de connexion -->
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      
+      <!-- Champ Email -->
+      <div class="form-group">
+        <label for="email">Email :</label>
+        <input 
+          type="email" 
+          id="email"
+          formControlName="email"
+          class="form-control"
+          [class.is-invalid]="f['email'].invalid && f['email'].touched"
+          placeholder="votre.email@exemple.com"
+        />
+        
+        <!-- Messages d'erreur pour l'email -->
+        <div *ngIf="f['email'].invalid && f['email'].touched" class="invalid-feedback">
+          <div *ngIf="f['email'].errors?.['required']">L'email est obligatoire</div>
+          <div *ngIf="f['email'].errors?.['email']">Veuillez saisir un email valide</div>
+        </div>
+      </div>
+
+      <!-- Champ Mot de passe -->
+      <div class="form-group">
+        <label for="password">Mot de passe :</label>
+        <input 
+          type="password" 
+          id="password"
+          formControlName="password"
+          class="form-control"
+          [class.is-invalid]="f['password'].invalid && f['password'].touched"
+          placeholder="••••••••"
+        />
+        
+        <!-- Messages d'erreur pour le mot de passe -->
+        <div *ngIf="f['password'].invalid && f['password'].touched" class="invalid-feedback">
+          <div *ngIf="f['password'].errors?.['required']">Le mot de passe est obligatoire</div>
+          <div *ngIf="f['password'].errors?.['minlength']">Le mot de passe doit contenir au moins 6 caractères</div>
+        </div>
+      </div>
+
+      <!-- Message d'erreur général -->
+      <div *ngIf="errorMessage" class="alert alert-danger">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Bouton de soumission -->
+      <button 
+        type="submit" 
+        class="btn btn-primary btn-block"
+        [disabled]="loginForm.invalid || isLoading"
+      >
+        <span *ngIf="isLoading" class="spinner"></span>
+        {{ isLoading ? 'Connexion...' : 'Se connecter' }}
+      </button>
+
+      <!-- Lien vers l'inscription -->
+      <div class="register-link">
+        <p>Pas encore de compte ? 
+          <a href="#" (click)="goToRegister()" class="link">Créer un compte</a>
+        </p>
+      </div>
+    </form>
+  </div>
+</div>

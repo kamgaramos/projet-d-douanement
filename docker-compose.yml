@@ -1,0 +1,18 @@
+
+
+services:
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: dedouanement_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: admin_user
+      POSTGRES_PASSWORD: SecurePassword123!
+      POSTGRES_DB: dedouanement_platform
+    ports:
+      - "5433:5432"  # <── On change 5432 par 5433 ici à gauche !
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
