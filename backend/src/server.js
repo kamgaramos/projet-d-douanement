@@ -28,9 +28,22 @@ const app = express();
 // Configuration des middlewares globaux
 // ===============================
 
-// CORS - Permet les requêtes cross-origin
+// CORS - Configuration robuste pour gérer les chaînes ou les listes d'origines
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:4200'];
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS || '*', // À configurer en production
+  origin: function (origin, callback) {
+    // Permet les requêtes sans origine (comme Postman ou les outils mobiles)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Non autorisé par la politique CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -120,11 +133,11 @@ const startServer = async () => {
     // Démarrage du serveur HTTP
     const server = app.listen(PORT, () => {
       console.log(`✓ Serveur démarré avec succès`);
-      console.log(`  📍 URL: http://localhost:${PORT}`);
-      console.log(`  🔧 Environnement: ${NODE_ENV}`);
+      console.log(`   📍 URL: http://localhost:${PORT}`);
+      console.log(`   🔧 Environnement: ${NODE_ENV}`);
       console.log('\n✓ Routes disponibles:');
-      console.log(`  - GET  /              (Bienvenue)`);
-      console.log(`  - GET  /api/health    (Health Check)\n`);
+      console.log(`   - GET  /              (Bienvenue)`);
+      console.log(`   - GET  /api/health    (Health Check)\n`);
     });
 
     // Gestion du shutdown gracieux

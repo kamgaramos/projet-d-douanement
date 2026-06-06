@@ -1,0 +1,88 @@
+<div class="register-container">
+  <div class="register-card">
+    <div class="register-header">
+      <h2>Plateforme de Dédouanement</h2>
+      <p>Créer un nouveau compte</p>
+    </div>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+
+      <!-- Champ Nom d'utilisateur -->
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur :</label>
+        <input
+          type="text"
+          id="username"
+          formControlName="username"
+          class="form-control"
+          [class.is-invalid]="f['username'].invalid && f['username'].touched"
+          placeholder="Votre nom d'utilisateur"
+        />
+        <div *ngIf="f['username'].invalid && f['username'].touched" class="invalid-feedback">
+          <div *ngIf="f['username'].errors?.['required']">Le nom d'utilisateur est obligatoire</div>
+          <div *ngIf="f['username'].errors?.['minlength']">Minimum 3 caractères</div>
+        </div>
+      </div>
+
+      <!-- Champ Email -->
+      <div class="form-group">
+        <label for="email">Email :</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          class="form-control"
+          [class.is-invalid]="f['email'].invalid && f['email'].touched"
+          placeholder="votre.email@exemple.com"
+        />
+        <div *ngIf="f['email'].invalid && f['email'].touched" class="invalid-feedback">
+          <div *ngIf="f['email'].errors?.['required']">L'email est obligatoire</div>
+          <div *ngIf="f['email'].errors?.['email']">Email invalide</div>
+        </div>
+      </div>
+
+      <!-- Champ Mot de passe -->
+      <div class="form-group">
+        <label for="password">Mot de passe :</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          class="form-control"
+          [class.is-invalid]="f['password'].invalid && f['password'].touched"
+          placeholder="••••••••"
+        />
+        <div *ngIf="f['password'].invalid && f['password'].touched" class="invalid-feedback">
+          <div *ngIf="f['password'].errors?.['required']">Le mot de passe est obligatoire</div>
+          <div *ngIf="f['password'].errors?.['minlength']">Minimum 6 caractères</div>
+        </div>
+      </div>
+
+      <!-- Champ Rôle -->
+      <div class="form-group">
+        <label for="role">Rôle :</label>
+        <select id="role" formControlName="role" class="form-control">
+          <option value="declarant">Déclarant</option>
+          <option value="douanier">Douanier</option>
+        </select>
+      </div>
+
+      <!-- Messages -->
+      <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+      <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
+
+      <!-- Bouton de soumission -->
+      <button type="submit" class="btn btn-primary" [disabled]="registerForm.invalid || isLoading">
+        <span *ngIf="isLoading" class="spinner"></span>
+        {{ isLoading ? 'Création...' : 'Créer le compte' }}
+      </button>
+
+      <!-- Lien vers connexion -->
+      <div class="login-link">
+        <p>Déjà un compte ?
+          <a href="#" (click)="goToLogin()" class="link">Se connecter</a>
+        </p>
+      </div>
+    </form>
+  </div>
+</div>

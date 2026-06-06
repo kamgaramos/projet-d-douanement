@@ -1,13 +1,13 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router'; // <-- Ajout de RouterLink ici
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink], // <-- Ajout de RouterLink ici pour le HTML
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
@@ -84,7 +84,7 @@ export class LoginComponent {
   }
 
   /**
-   * Navigation vers la page d'inscription
+   * Navigation vers la page d'inscription (Gardée au cas où pour compatibilité)
    */
   goToRegister(): void {
     this.router.navigate(['/register']);
