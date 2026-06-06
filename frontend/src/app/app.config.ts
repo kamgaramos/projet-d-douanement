@@ -9,9 +9,11 @@ import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-    // Active HttpClient (standalone) et récupère les interceptors déclarés via DI.
+    
+    // Active HttpClient (standalone) et intègre le support des intercepteurs basés sur les classes (DI)
     provideHttpClient(withInterceptorsFromDi()),
-    // Enregistre l'intercepteur d'authentification.
+    
+    // Enregistre l'intercepteur d'authentification pour intercepter et ajouter le token JWT à tes requêtes vers l'API
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,

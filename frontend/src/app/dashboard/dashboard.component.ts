@@ -1,32 +1,37 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms'; // <-- Ajout des modules de formulaire
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { DeclarationService } from '../core/services/declaration.service'; // <-- Importation du service
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule], // <-- Ajout de ReactiveFormsModule ici
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
   currentUser: any = null;
   declarations: any[] = [];
-  
-  // Variables pour la gestion du formulaire de cargaison
   cargaisonForm!: FormGroup;
   showFormModal: boolean = false;
 
-  constructor(private router: Router, private fb: FormBuilder) {}
+  constructor(
+    private router: Router, 
+    private fb: FormBuilder,
+    private declarationService: DeclarationService // <-- Injection du service
+  ) {}
 
   ngOnInit(): void {
-    this.currentUser = { name: 'Kamga', role: 'declarant' }; 
-    this.loadMockData();
+    // Récupération dynamique de l'utilisateur connecté depuis le stockage local
+    const userJson = localStorage.getItem('user');
+    this.currentUser = userJson ? JSON.parse(userJson) : { name: 'Kamga', role: 'declarant' }; 
+
+    this.loadRealData();
     this.initCargaisonForm();
   }
 
-  // Initialisation du formulaire réactif avec validations
   initCargaisonForm() {
     this.cargaisonForm = this.fb.group({
       description: ['', [Validators.required, Validators.minLength(5)]],
@@ -36,67 +41,48 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // Ouvre la boîte de dialogue
+  // Chargement des données réelles depuis l'API Node.js
+  loadRealData() {
+    this.declarationService.getDeclarations().subscribe({
+      next: (data) => {
+        this.declarations = data;
+      },
+      error: (err) => {
+        console.error('Erreur lors de la récupération des cargaisons:', err);
+      }
+    });
+  }
+
   openModal() {
     this.showFormModal = true;
   }
 
-  // Ferme la boîte de dialogue et réinitialise le formulaire
   closeModal() {
     this.showFormModal = false;
     this.cargaisonForm.reset();
   }
 
-  // Soumission du formulaire
+  // Envoi de la nouvelle cargaison en base de données
   onAddCargaison() {
-    if (this.cargaisonForm.invalid) {
-      return;
-    }
+    if (this.cargaisonForm.invalid) return;
 
-    // Création de l'objet cargaison avec une référence générée automatiquement
-    const newCargaison = {
-      reference: `DEC-2026-00${this.declarations.length + 1}`,
+    const payload = {
       description: this.cargaisonForm.value.description,
       typeMarchandise: this.cargaisonForm.value.typeMarchandise,
       poids: this.cargaisonForm.value.poids,
-      valeur: this.cargaisonForm.value.valeur,
-      status: 'En attente'
+      valeur: this.cargaisonForm.value.valeur
     };
 
-    // On l'ajoute au début de notre liste locale pour simuler l'insertion
-    this.declarations.unshift(newCargaison);
-
-    // On ferme le formulaire
-    this.closeModal();
-  }
-
-  loadMockData() {
-    this.declarations = [
-      {
-        reference: 'DEC-2026-001',
-        description: 'Conteneur de matériel informatique',
-        typeMarchandise: 'Électronique',
-        poids: 4500,
-        valeur: 75000,
-        status: 'En attente'
+    this.declarationService.createCargaison(payload).subscribe({
+      next: (response) => {
+        console.log('Cargaison enregistrée avec succès !', response);
+        this.loadRealData(); // Recharge les données fraîches depuis PostgreSQL
+        this.closeModal();
       },
-      {
-        reference: 'DEC-2026-002',
-        description: 'Sacs de riz importés',
-        typeMarchandise: 'Alimentaire',
-        poids: 12000,
-        valeur: 18000,
-        status: 'Approuvé'
-      },
-      {
-        reference: 'DEC-2026-003',
-        description: 'Pièces de rechange automobiles',
-        typeMarchandise: 'Mécanique',
-        poids: 1800,
-        valeur: 32000,
-        status: 'Rejeté'
+      error: (err) => {
+        console.error("Erreur lors de l'enregistrement de la cargaison:", err);
       }
-    ];
+    });
   }
 
   getCountByStatus(status: string): number {
@@ -104,6 +90,8 @@ export class DashboardComponent implements OnInit {
   }
 
   onLogout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     this.router.navigate(['/login']);
   }
 }
