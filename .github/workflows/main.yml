@@ -1,47 +1,13 @@
-name: CI/CD Pipeline Complet
-
-on:
-  push:
-    branches: [ main, develop ]
-
-jobs:
-  # 1. Validation du Backend (Node.js)
-  backend-validation:
+backend-validation:
     runs-on: ubuntu-latest
+    # Déclaration des variables d'environnement pour cette étape
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: cd backend && npm ci
-      - run: cd backend && npm run lint --if-present
-      - run: cd backend && npm test --if-present
-
-  # 2. Validation du Frontend (React/Vite)
-  frontend-validation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: cd frontend && npm ci
-      - run: cd frontend && npm run build
-
-  # 3. Construction des images Docker (Smoke Test)
-  docker-build:
-    needs: [backend-validation, frontend-validation]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      # Construction de l'image backend
-      - uses: docker/build-push-action@v5
-        with: 
-          context: ./backend
-          push: false
-          tags: dedouanement-backend:latest
-      # Construction de l'image frontend
-      - uses: docker/build-push-action@v5
-        with: 
-          context: ./frontend
-          push: false
-          tags: dedouanement-frontend:latest
+      # Maintenant, vos tests backend auront accès à ces variables
+      - run: cd backend && npm test
