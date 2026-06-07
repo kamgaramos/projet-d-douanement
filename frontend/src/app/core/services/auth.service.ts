@@ -3,6 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
+/**
+ * Types de rôles gérés côté frontend.
+ * (backend: 'declarant' et 'douanier')
+ */
+export type AppRole = 'declarant' | 'douanier';
+
 // Structure de la réponse renvoyée par POST /api/auth/login
 export interface LoginResponse {
   token: string;
@@ -10,7 +16,7 @@ export interface LoginResponse {
     id: number;
     username: string;
     email: string;
-    role: 'declarant' | 'douanier' | 'admin';
+    role: AppRole | string;
   };
 }
 
@@ -38,6 +44,9 @@ export class AuthService {
    * Envoie les identifiants au backend et stocke le token + user en localStorage.
    */
   login(email: string, password: string): Observable<LoginResponse> {
+    // Sécurité : on nettoie tout AVANT de stocker le nouveau token
+    localStorage.clear();
+
     return this.http.post<LoginResponse>(`${this.API_URL}/login`, { email, password }).pipe(
       tap((response) => {
         localStorage.setItem(this.TOKEN_KEY, response.token);
@@ -53,7 +62,7 @@ export class AuthService {
     username: string,
     email: string,
     password: string,
-    role: 'declarant' | 'douanier' = 'declarant'
+    role: AppRole = 'declarant'
   ): Observable<RegisterResponse> {
     return this.http.post<RegisterResponse>(`${this.API_URL}/register`, {
       username, email, password, role,
@@ -84,10 +93,17 @@ export class AuthService {
     return !!this.getToken();
   }
 
-  /** Supprime les données de session et redirige vers la page de connexion. */
+  /**
+   * Supprime TOUTES les données de session et redirige proprement.
+   * Version optimisée sans rechargement lourd du navigateur.
+   */
   logout(): void {
+    // 1. Nettoyage complet et immédiat du localStorage
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.clear();
+
+    // 2. Redirection fluide gérée par le routeur d'Angular
     this.router.navigate(['/login']);
   }
 }

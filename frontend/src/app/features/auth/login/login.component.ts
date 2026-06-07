@@ -1,17 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core'; // <-- Ajout de OnInit ici
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router'; // <-- Ajout de RouterLink ici
+import { Router, RouterLink } from '@angular/router'; 
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink], // <-- Ajout de RouterLink ici pour le HTML
+  imports: [CommonModule, ReactiveFormsModule, RouterLink], 
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit { // <-- Implémentation de OnInit ici
 
   loginForm: FormGroup;
   errorMessage: string = '';
@@ -27,6 +27,16 @@ export class LoginComponent {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
+  }
+
+  /**
+   * Se déclenche dès que l'utilisateur arrive sur la page de connexion
+   */
+  ngOnInit(): void {
+    // NETTOYAGE CRUCIAL : Supprime le token et l'ancien utilisateur pour éviter les conflits de reconnexion
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.clear(); 
   }
 
   /**

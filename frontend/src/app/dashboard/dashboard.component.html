@@ -5,7 +5,9 @@
       <p>Suivi en temps réel des déclarations et cargaisons</p>
     </div>
     <div class="user-profile">
-      <span>Bienvenue, <strong>{{ currentUser?.name }}</strong> (<small>{{ currentUser?.role }}</small>)</span>
+      <span>Bienvenue, <strong>{{ currentUser?.name || currentUser?.username || currentUser?.nom || 'Déclarant' }}</strong> 
+        <small class="role-badge">{{ currentUser?.role }}</small>
+      </span>
       <button class="btn btn-danger" (click)="onLogout()">Déconnexion</button>
     </div>
   </header>
@@ -17,17 +19,19 @@
     </div>
     <div class="stat-card orange">
       <h3>En Attente</h3>
-      <p class="stat-number">{{ getCountByStatus('En attente') }}</p>
+      <p class="stat-number">{{ getCountByStatus('En attente') + getCountByStatus('en attente') }}</p>
     </div>
     <div class="stat-card green">
       <h3>Approuvées</h3>
-      <p class="stat-number">{{ getCountByStatus('Approuvé') }}</p>
+      <p class="stat-number">{{ getCountByStatus('Approuvé') + getCountByStatus('approuvé') }}</p>
     </div>
   </section>
 
   <section class="table-section">
     <div class="table-header">
-      <h2>Liste des Cargaisons & Déclarations</h2>
+      <h2>
+        {{ currentUser?.role === 'douanier' ? 'Dossiers à Traiter & Historique' : 'Liste de mes Cargaisons & Déclarations' }}
+      </h2>
       <button class="btn btn-primary" *ngIf="currentUser?.role === 'declarant'" (click)="openModal()">
         + Nouvelle Cargaison
       </button>
@@ -42,31 +46,57 @@
             <th>Type de Marchandise</th>
             <th>Poids (kg)</th>
             <th>Valeur ($)</th>
+            <th>Droits ($)</th>
             <th>Statut</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let item of declarations">
-            <td><strong>{{ item.reference }}</strong></td>
-            <td>{{ item.description }}</td>
-            <td>{{ item.typeMarchandise }}</td>
-            <td>{{ item.poids }}</td>
-            <td>{{ item.valeur }}</td>
+            <td><strong>{{ item.reference || ('DEC-' + item.id) }}</strong></td>
+            
+            <td>{{ item.description || item.cargaison?.description || 'En attente de détails...' }}</td>
+            
+            <td>{{ item.type_marchandise || item.typeMarchandise || item.cargaison?.type_marchandise || 'Général' }}</td>
+            
+            <td>
+              {{ 
+                item.poids ?? item.poids_kg ?? item.cargaison?.poids ?? '-' 
+              }}
+            </td>
+            
+            <td>
+              {{ 
+                item.valeur ?? item.valeur_usd ?? item.cargaison?.valeur ?? '-' 
+              }}
+            </td>
+
+            <td>{{ item.montant_droits_douane || '0.00' }}</td>
+            
             <td>
               <span class="badge" [ngClass]="{
-                'badge-warning': item.status === 'En attente',
-                'badge-success': item.status === 'Approuvé',
-                'badge-danger': item.status === 'Rejeté'
-              }">{{ item.status }}</span>
+                'badge-warning': item.statut === 'En attente' || item.statut === 'en attente',
+                'badge-success': item.statut === 'Approuvé' || item.statut === 'approuvé',
+                'badge-danger': item.statut === 'Rejeté' || item.statut === 'rejeté',
+                'badge-secondary': item.statut === 'brouillon' || item.statut === 'Draft'
+              }">{{ item.statut }}</span>
             </td>
+            
             <td>
               <button class="btn-action" title="Voir les détails">👁️</button>
-              <button class="btn-action" *ngIf="currentUser?.role === 'douanier' && item.status === 'En attente'" title="Valider / Inspecter">⚖️</button>
+              
+              <span *ngIf="currentUser?.role === 'douanier' && (item.statut === 'En attente' || item.statut === 'en attente')" class="douane-actions-group">
+                <button class="btn-verify approve" title="Approuver le dossier" (click)="onUpdateStatus(item.id, 'Approuvé')">
+                  ✔️
+                </button>
+                <button class="btn-verify reject" title="Rejeter le dossier" (click)="onUpdateStatus(item.id, 'Rejeté')">
+                  ❌
+                </button>
+              </span>
             </td>
           </tr>
           <tr *ngIf="declarations.length === 0">
-            <td colspan="7" class="text-center">Aucune cargaison enregistrée pour le moment.</td>
+            <td colspan="8" class="text-center">Aucune cargaison enregistrée pour le moment.</td>
           </tr>
         </tbody>
       </table>
@@ -81,16 +111,9 @@
       </div>
 
       <form [formGroup]="cargaisonForm" (ngSubmit)="onAddCargaison()" class="modal-form">
-        
         <div class="form-group">
           <label for="description">Description de la cargaison :</label>
-          <input 
-            type="text" 
-            id="description" 
-            formControlName="description" 
-            class="form-control" 
-            placeholder="Ex: Conteneur de pièces électroniques"
-          />
+          <input type="text" id="description" formControlName="description" class="form-control" placeholder="Ex: Conteneur de pièces électroniques"/>
           <div *ngIf="cargaisonForm.get('description')?.invalid && cargaisonForm.get('description')?.touched" class="error-msg">
             La description doit contenir au moins 5 caractères.
           </div>
@@ -106,26 +129,16 @@
             <option value="Textile">Textile</option>
             <option value="Autre">Autre</option>
           </select>
-          <div *ngIf="cargaisonForm.get('typeMarchandise')?.invalid && cargaisonForm.get('typeMarchandise')?.touched" class="error-msg">
-            Le type de marchandise est obligatoire.
-          </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="poids">Poids (en kg) :</label>
             <input type="number" id="poids" formControlName="poids" class="form-control" placeholder="Ex: 500"/>
-            <div *ngIf="cargaisonForm.get('poids')?.invalid && cargaisonForm.get('poids')?.touched" class="error-msg">
-              Poids valide obligatoire.
-            </div>
           </div>
-
           <div class="form-group">
             <label for="valeur">Valeur (en USD $) :</label>
             <input type="number" id="valeur" formControlName="valeur" class="form-control" placeholder="Ex: 25000"/>
-            <div *ngIf="cargaisonForm.get('valeur')?.invalid && cargaisonForm.get('valeur')?.touched" class="error-msg">
-              Valeur valide obligatoire.
-            </div>
           </div>
         </div>
 
@@ -133,7 +146,6 @@
           <button type="button" class="btn btn-secondary" (click)="closeModal()">Annuler</button>
           <button type="submit" class="btn btn-primary" [disabled]="cargaisonForm.invalid">Enregistrer la cargaison</button>
         </div>
-
       </form>
     </div>
   </div>

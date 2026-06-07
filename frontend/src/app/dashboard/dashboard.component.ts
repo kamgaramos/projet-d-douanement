@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { DeclarationService } from '../core/services/declaration.service'; // <-- Importation du service
+import { DeclarationService } from '../core/services/declaration.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,13 +20,15 @@ export class DashboardComponent implements OnInit {
   constructor(
     private router: Router, 
     private fb: FormBuilder,
-    private declarationService: DeclarationService // <-- Injection du service
+    private declarationService: DeclarationService 
   ) {}
 
   ngOnInit(): void {
-    // Récupération dynamique de l'utilisateur connecté depuis le stockage local
+    // Récupération de l'utilisateur connecté depuis le localStorage
     const userJson = localStorage.getItem('user');
-    this.currentUser = userJson ? JSON.parse(userJson) : { name: 'Kamga', role: 'declarant' }; 
+    
+    // Valeur par défaut si le localStorage est vide (pour tes tests)
+    this.currentUser = userJson ? JSON.parse(userJson) : { name: 'kamga', role: 'declarant' }; 
 
     this.loadRealData();
     this.initCargaisonForm();
@@ -41,16 +43,47 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // Chargement des données réelles depuis l'API Node.js
   loadRealData() {
     this.declarationService.getDeclarations().subscribe({
       next: (data) => {
-        this.declarations = data;
+        // --- INTERCEPTEUR AUTOMATIQUE DE DÉBOGAGE ---
+        if (data && data.length > 0) {
+          console.log("%c--- STRUCTURE DÉTECTÉE DE TON BACKEND ---", "color: #3b82f6; font-weight: bold; font-size: 14px;");
+          console.log("Voici la liste complète des clés réelles de ta base de données :", Object.keys(data[0]));
+          console.log("Objet témoin complet :", data[0]);
+        } else {
+          console.log("Le backend renvoie un tableau vide []");
+        }
+
+        // Tri : met les dossiers "En attente" ou "en attente" en haut de liste
+        this.declarations = data.sort((a, b) => {
+          const statusA = (a.status || a.statut || '').toLowerCase();
+          const statusB = (b.status || b.statut || '').toLowerCase();
+          return statusA === 'en attente' ? -1 : 1;
+        });
       },
       error: (err) => {
         console.error('Erreur lors de la récupération des cargaisons:', err);
       }
     });
+  }
+
+  // --- ACTIONS DU DOUANIER ---
+  onUpdateStatus(id: number, status: string) {
+    const actionVerbe = status === 'Approuvé' ? 'approuver' : 'rejeter';
+    
+    if (confirm(`Êtes-vous sûr de vouloir ${actionVerbe} cette cargaison ?`)) {
+      this.declarationService.updateStatut(id, status).subscribe({
+        next: (response) => {
+          console.log(`Cargaison mise à jour avec succès : ${status}`);
+          this.loadRealData(); // Recharge le tableau et met à jour les compteurs
+        },
+        error: (err) => {
+          console.error("Erreur lors du changement de statut :", err);
+          alert("Une erreur est survenue lors de l'évaluation du dossier.");
+        }
+      });
+    }
   }
 
   openModal() {
@@ -62,7 +95,6 @@ export class DashboardComponent implements OnInit {
     this.cargaisonForm.reset();
   }
 
-  // Envoi de la nouvelle cargaison en base de données
   onAddCargaison() {
     if (this.cargaisonForm.invalid) return;
 
@@ -75,8 +107,7 @@ export class DashboardComponent implements OnInit {
 
     this.declarationService.createCargaison(payload).subscribe({
       next: (response) => {
-        console.log('Cargaison enregistrée avec succès !', response);
-        this.loadRealData(); // Recharge les données fraîches depuis PostgreSQL
+        this.loadRealData();
         this.closeModal();
       },
       error: (err) => {
@@ -85,8 +116,13 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  // Amélioration de la méthode pour ignorer les problèmes de MAJUSCULES/minuscules (ex: 'brouillon' vs 'Brouillon')
   getCountByStatus(status: string): number {
-    return this.declarations.filter(d => d.status === status).length;
+    if (!this.declarations) return 0;
+    return this.declarations.filter(d => {
+      const currentStatus = (d.status || d.statut || '').toLowerCase();
+      return currentStatus === status.toLowerCase();
+    }).length;
   }
 
   onLogout(): void {
