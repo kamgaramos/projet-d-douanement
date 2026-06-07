@@ -1,109 +1,92 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
 
-/**
- * Types de rôles gérés côté frontend.
- * (backend: 'declarant' et 'douanier')
- */
-export type AppRole = 'declarant' | 'douanier';
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
 
-// Structure de la réponse renvoyée par POST /api/auth/login
-export interface LoginResponse {
+export interface AuthResponse {
   token: string;
   user: {
     id: number;
-    username: string;
+    name: string;
     email: string;
-    role: AppRole | string;
+    role: string;
   };
+  message?: string;
 }
 
-// Structure de la réponse renvoyée par POST /api/auth/register
-export interface RegisterResponse {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  created_at: string;
-}
-
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class AuthService {
+  // URL complète forcée pour éviter les ambiguïtés
+  private loginUrl = 'http://localhost:5000/api/auth/login';
+  private registerUrl = 'http://localhost:5000/api/auth/register';
+  
+  private currentUserSubject = new BehaviorSubject<any>(null);
+  public currentUser$ = this.currentUserSubject.asObservable();
 
-  private readonly API_URL = 'http://localhost:5000/api/auth';
-
-  // Clés utilisées pour le stockage dans localStorage
-  private readonly TOKEN_KEY = 'token';
-  private readonly USER_KEY  = 'user';
-
-  constructor(private http: HttpClient, private router: Router) {}
-
-  /**
-   * Envoie les identifiants au backend et stocke le token + user en localStorage.
-   */
-  login(email: string, password: string): Observable<LoginResponse> {
-    // Sécurité : on nettoie tout AVANT de stocker le nouveau token
-    localStorage.clear();
-
-    return this.http.post<LoginResponse>(`${this.API_URL}/login`, { email, password }).pipe(
-      tap((response) => {
-        localStorage.setItem(this.TOKEN_KEY, response.token);
-        localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
-      })
-    );
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {
+    this.checkExistingAuth();
   }
 
-  /**
-   * Inscrit un nouvel utilisateur (déclarant ou douanier).
-   */
-  register(
-    username: string,
-    email: string,
-    password: string,
-    role: AppRole = 'declarant'
-  ): Observable<RegisterResponse> {
-    return this.http.post<RegisterResponse>(`${this.API_URL}/register`, {
-      username, email, password, role,
-    });
+  login(credentials: LoginCredentials): Observable<AuthResponse> {
+    // Ajout explicite du header Content-Type pour le serveur Node.js
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    
+    console.log("Service: Envoi de la requête de login vers", this.loginUrl);
+    
+    return this.http.post<AuthResponse>(this.loginUrl, credentials, { headers })
+      .pipe(
+        tap({
+          next: (response) => {
+            console.log("Service: Réponse reçue du serveur", response);
+            if (response.token && response.user) {
+              localStorage.setItem('token', response.token);
+              localStorage.setItem('user', JSON.stringify(response.user));
+              this.currentUserSubject.next(response.user);
+            }
+          },
+          error: (err) => {
+            console.error("Service: Erreur lors de la requête HTTP", err);
+          }
+        })
+      );
   }
 
-  // ─── Méthodes utilitaires ───────────────────────────────────────────────────
-
-  /** Récupère le token JWT depuis le localStorage. */
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+  register(userData: any): Observable<any> {
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    return this.http.post<any>(this.registerUrl, userData, { headers });
   }
 
-  /** Récupère le rôle de l'utilisateur connecté. */
-  getUserRole(): string | null {
-    const user = localStorage.getItem(this.USER_KEY);
-    return user ? JSON.parse(user).role : null;
-  }
-
-  /** Récupère l'objet utilisateur complet. */
-  getUser(): LoginResponse['user'] | null {
-    const user = localStorage.getItem(this.USER_KEY);
-    return user ? JSON.parse(user) : null;
-  }
-
-  /** Retourne true si un token est présent en localStorage. */
-  isLoggedIn(): boolean {
-    return !!this.getToken();
-  }
-
-  /**
-   * Supprime TOUTES les données de session et redirige proprement.
-   * Version optimisée sans rechargement lourd du navigateur.
-   */
   logout(): void {
-    // 1. Nettoyage complet et immédiat du localStorage
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
-    localStorage.clear();
-
-    // 2. Redirection fluide gérée par le routeur d'Angular
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getCurrentUser(): any {
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
+  }
+
+  private checkExistingAuth(): void {
+    const user = this.getCurrentUser();
+    if (user) {
+      this.currentUserSubject.next(user);
+    }
   }
 }

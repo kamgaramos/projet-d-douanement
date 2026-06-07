@@ -195,6 +195,24 @@
 .btn-verify.reject { border-color: #ef4444; color: #ef4444; }
 .btn-verify.reject:hover { background-color: #ef4444; color: white; }
 
+/* --- BOUTON SOUMETTRE --- */
+.btn-submit {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+.btn-submit:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
 /* --- BADGES STATUT --- */
 .badge {
   padding: 6px 12px;

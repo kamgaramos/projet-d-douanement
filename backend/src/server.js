@@ -16,7 +16,7 @@ const app = express();
 
 // Middlewares
 app.use(cors({
-  origin: '*', // Simplifié pour le test, tu pourras restreindre après
+  origin: '*', 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -24,6 +24,17 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- MOUCHARD DE REQUÊTES (AJOUTÉ) ---
+// Ce log t'affichera chaque requête dans ton terminal VS Code
+app.use((req, res, next) => {
+  console.log(`[LOG] Requête reçue : ${req.method} ${req.url}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`[LOG] Body reçu :`, JSON.stringify(req.body));
+  }
+  next();
+});
+// ------------------------------------
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -85,6 +85,15 @@
             <td>
               <button class="btn-action" title="Voir les détails">👁️</button>
               
+              <!-- Bouton Soumettre pour les déclarants avec statut brouillon -->
+              <button 
+                *ngIf="currentUser?.role === 'declarant' && item.statut === 'brouillon'" 
+                class="btn-submit" 
+                title="Soumettre la déclaration" 
+                (click)="soumettre(item.id)">
+                📤 Soumettre
+              </button>
+              
               <span *ngIf="currentUser?.role === 'douanier' && (item.statut === 'En attente' || item.statut === 'en attente')" class="douane-actions-group">
                 <button class="btn-verify approve" title="Approuver le dossier" (click)="onUpdateStatus(item.id, 'Approuvé')">
                   ✔️

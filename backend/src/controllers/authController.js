@@ -25,9 +25,24 @@ const login = async (req, res) => {
   try {
     const { rows } = await User.findByEmail(email);
     const user = rows[0];
+
+    // --- DÉBUT LOGS DE DÉBOGAGE ---
+    console.log("--- DEBUG LOGIN ---");
+    console.log("Email cherché :", email);
+    console.log("Utilisateur trouvé :", user ? "Oui" : "Non");
+    if (user) {
+        console.log("Hash en DB :", user.password);
+    }
+    // --- FIN LOGS ---
+
     if (!user) return res.status(401).json({ error: 'Identifiants invalides' });
 
     const valid = await bcrypt.compare(password, user.password);
+    
+    // --- LOGS DÉBOGAGE ---
+    console.log("Résultat bcrypt.compare :", valid);
+    // ---------------------
+
     if (!valid) return res.status(401).json({ error: 'Identifiants invalides' });
 
     const token = jwt.sign(
@@ -36,9 +51,23 @@ const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 
-    res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        name: user.username, // Utiliser 'name' pour la cohérence frontend
+        username: user.username,
+        email: user.email, 
+        role: user.role 
+      },
+      message: 'Connexion réussie'
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Erreur serveur détaillée lors de la connexion:", err);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de la connexion',
+      message: err.message 
+    });
   }
 };
 

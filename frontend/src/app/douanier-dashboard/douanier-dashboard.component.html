@@ -1,0 +1,114 @@
+<div class="douanier-dashboard-container">
+  <header class="dashboard-header">
+    <div class="header-title">
+      <h1>🛂 Tableau de Bord - Service Douanier</h1>
+      <p>Validation des déclarations en attente de traitement</p>
+    </div>
+    <div class="user-profile">
+      <span>Connecté en tant que <strong>{{ currentUser?.name || 'Douanier' }}</strong> 
+        <small class="role-badge douanier">{{ currentUser?.role }}</small>
+      </span>
+      <button class="btn btn-danger" (click)="onLogout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <section class="stats-grid">
+    <div class="stat-card orange">
+      <h3>📋 Déclarations à Traiter</h3>
+      <p class="stat-number">{{ declarationsEnAttente.length }}</p>
+    </div>
+    <div class="stat-card blue">
+      <h3>⏱️ En Cours de Traitement</h3>
+      <p class="stat-number">{{ declarationsEnAttente.length }}</p>
+    </div>
+    <div class="stat-card green">
+      <h3>✅ Prêt pour Validation</h3>
+      <p class="stat-number">{{ declarationsEnAttente.length }}</p>
+    </div>
+  </section>
+
+  <section class="validation-section">
+    <div class="section-header">
+      <h2>📑 Déclarations En Attente de Validation</h2>
+      <button class="btn btn-secondary" (click)="chargerDeclarationsEnAttente()" [disabled]="isLoading">
+        {{ isLoading ? '🔄 Actualisation...' : '🔄 Actualiser' }}
+      </button>
+    </div>
+
+    <div class="loading-spinner" *ngIf="isLoading">
+      <p>⏳ Chargement des déclarations...</p>
+    </div>
+
+    <div class="table-responsive" *ngIf="!isLoading">
+      <table class="validation-table">
+        <thead>
+          <tr>
+            <th>📋 Référence</th>
+            <th>📦 Description</th>
+            <th>🏷️ Type Marchandise</th>
+            <th>⚖️ Poids (kg)</th>
+            <th>💰 Valeur ($)</th>
+            <th>💳 Droits ($)</th>
+            <th>📅 Date Soumission</th>
+            <th>⚡ Actions de Validation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let declaration of declarationsEnAttente" class="declaration-row">
+            <td>
+              <strong class="reference-code">{{ declaration.reference || ('DEC-' + declaration.id) }}</strong>
+            </td>
+            
+            <td class="description-cell">
+              {{ declaration.description || 'Description non renseignée' }}
+            </td>
+            
+            <td>
+              <span class="type-badge">{{ declaration.type_marchandise || declaration.typeMarchandise || 'Général' }}</span>
+            </td>
+            
+            <td class="numeric-cell">
+              {{ declaration.poids ?? declaration.poids_kg ?? '-' }}
+            </td>
+            
+            <td class="numeric-cell">
+              {{ declaration.valeur ?? declaration.valeur_usd ?? '-' }}
+            </td>
+
+            <td class="numeric-cell">
+              {{ declaration.montant_droits_douane || '0.00' }}
+            </td>
+
+            <td class="date-cell">
+              {{ declaration.created_at | date:'dd/MM/yyyy HH:mm' }}
+            </td>
+            
+            <td class="actions-cell">
+              <div class="validation-buttons">
+                <button 
+                  class="btn-validation approve" 
+                  title="Approuver cette déclaration" 
+                  (click)="valider(declaration.id, 'approuvée')">
+                  ✅ Approuver
+                </button>
+                <button 
+                  class="btn-validation reject" 
+                  title="Rejeter cette déclaration" 
+                  (click)="valider(declaration.id, 'rejetée')">
+                  ❌ Rejeter
+                </button>
+              </div>
+            </td>
+          </tr>
+          
+          <tr *ngIf="declarationsEnAttente.length === 0 && !isLoading" class="empty-row">
+            <td colspan="8" class="text-center empty-message">
+              🎉 Aucune déclaration en attente de validation.
+              <br><small>Toutes les déclarations ont été traitées.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

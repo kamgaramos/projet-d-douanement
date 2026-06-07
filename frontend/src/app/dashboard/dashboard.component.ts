@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { DeclarationService } from '../core/services/declaration.service';
+import { CargaisonService } from '../core/services/cargaison.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,7 +21,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private router: Router, 
     private fb: FormBuilder,
-    private declarationService: DeclarationService 
+    private declarationService: DeclarationService,
+    private cargaisonService: CargaisonService
   ) {}
 
   ngOnInit(): void {
@@ -29,6 +31,12 @@ export class DashboardComponent implements OnInit {
     
     // Valeur par défaut si le localStorage est vide (pour tes tests)
     this.currentUser = userJson ? JSON.parse(userJson) : { name: 'kamga', role: 'declarant' }; 
+
+    // Redirection automatique des douaniers vers leur interface spécialisée
+    if (this.currentUser?.role === 'douanier') {
+      this.router.navigate(['/douanier-dashboard']);
+      return;
+    }
 
     this.loadRealData();
     this.initCargaisonForm();
@@ -40,6 +48,24 @@ export class DashboardComponent implements OnInit {
       typeMarchandise: ['', [Validators.required]],
       poids: ['', [Validators.required, Validators.min(1)]],
       valeur: ['', [Validators.required, Validators.min(1)]]
+    });
+  }
+
+  // Méthode pour charger les déclarations (alias pour compatibilité)
+  chargerDeclarations() {
+    this.loadRealData();
+  }
+
+  // Méthode pour soumettre une déclaration
+  soumettre(id: number) {
+    this.cargaisonService.soumettreDeclaration(id).subscribe({
+      next: (response) => {
+        this.chargerDeclarations();
+      },
+      error: (err) => {
+        alert('Erreur lors de la soumission de la déclaration');
+        console.error(err);
+      }
     });
   }
 

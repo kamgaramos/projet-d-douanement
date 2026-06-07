@@ -1,8 +1,10 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterComponent } from './features/auth/register/register.component'; // <-- Assure-toi que le chemin vers ton register est bien celui-là
+import { RegisterComponent } from './features/auth/register/register.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
+import { DouanierDashboardComponent } from './douanier-dashboard/douanier-dashboard.component';
 import { authGuard } from './core/guards/auth-functional.guard';
+import { DouanierGuard } from './core/guards/douanier.guard';
 
 export const routes: Routes = [
   {
@@ -11,12 +13,17 @@ export const routes: Routes = [
   },
   {
     path: 'register',
-    component: RegisterComponent, // <-- On déclare enfin la route de l'inscription !
+    component: RegisterComponent,
   },
   {
     path: 'dashboard',
     component: DashboardComponent,
     canActivate: [authGuard(['declarant', 'douanier'])],
+  },
+  {
+    path: 'douanier-dashboard',
+    component: DouanierDashboardComponent,
+    canActivate: [DouanierGuard],
   },
   {
     path: '',

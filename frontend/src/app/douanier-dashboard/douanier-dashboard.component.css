@@ -1,0 +1,261 @@
+/* --- CONFIGURATION GLOBALE DOUANIER --- */
+.douanier-dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 2rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* --- HEADER DOUANIER --- */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  margin-bottom: 2rem;
+}
+
+.header-title h1 {
+  font-size: 1.8rem;
+  margin: 0 0 0.25rem 0;
+  font-weight: 700;
+}
+
+.header-title p {
+  color: #cbd5e1;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.role-badge.douanier {
+  background-color: #f59e0b;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+/* --- STATISTIQUES DOUANIER --- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-left: 5px solid #cbd5e1;
+}
+
+.stat-card.blue { border-left-color: #3b82f6; }
+.stat-card.orange { border-left-color: #f97316; }
+.stat-card.green { border-left-color: #10b981; }
+
+.stat-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.stat-number {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* --- SECTION VALIDATION --- */
+.validation-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 1rem;
+}
+
+.section-header h2 {
+  font-size: 1.3rem;
+  color: #0f172a;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* --- TABLEAU VALIDATION --- */
+.table-responsive {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.validation-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.validation-table th {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: white;
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: none;
+}
+
+.validation-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.declaration-row:hover {
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* --- CELLULES SPÉCIALES --- */
+.reference-code {
+  font-family: 'Courier New', monospace;
+  background-color: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+.type-badge {
+  background-color: #ddd6fe;
+  color: #5b21b6;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.numeric-cell {
+  text-align: right;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.date-cell {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.description-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- BOUTONS DE VALIDATION --- */
+.actions-cell {
+  text-align: center;
+}
+
+.validation-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-validation {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-validation.approve {
+  background-color: #10b981;
+  color: white;
+}
+.btn-validation.approve:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-validation.reject {
+  background-color: #ef4444;
+  color: white;
+}
+.btn-validation.reject:hover {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* --- BOUTONS GÉNÉRAUX --- */
+.btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+}
+.btn-danger:hover { background-color: #dc2626; }
+
+.btn-secondary {
+  background-color: #64748b;
+  color: white;
+}
+.btn-secondary:hover { background-color: #475569; }
+.btn-secondary:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* --- LOADING & EMPTY STATES --- */
+.loading-spinner {
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.empty-row .empty-message {
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+.empty-row .empty-message small {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
