@@ -1,0 +1,13 @@
+backend-validation:
+    runs-on: ubuntu-latest
+    # Déclaration des variables d'environnement pour cette étape
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: cd backend && npm ci
+      # Maintenant, vos tests backend auront accès à ces variables
+      - run: cd backend && npm test
