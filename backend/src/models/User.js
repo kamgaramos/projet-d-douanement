@@ -1,5 +1,7 @@
 const { query } = require('../config/db');
 
+const ALLOWED_ROLES = ['declarant', 'douanier', 'transitaire'];
+
 const createTable = async () => {
   await query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -20,6 +22,7 @@ const User = {
       'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role, created_at',
       [username, email, password, role]
     ),
+  validateRole: (role) => ALLOWED_ROLES.includes(role),
   findByEmail: (email) =>
     query('SELECT * FROM users WHERE email = $1', [email]),
   findById: (id) =>

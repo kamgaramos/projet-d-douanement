@@ -7,9 +7,14 @@ const register = async (req, res) => {
   if (!username || !email || !password)
     return res.status(400).json({ error: 'Champs requis manquants' });
 
+  const normalizedRole = (role || 'declarant').toString().trim().toLowerCase();
+  if (!User.validateRole(normalizedRole)) {
+    return res.status(400).json({ error: 'Rôle invalide' });
+  }
+
   try {
     const hashed = await bcrypt.hash(password, 10);
-    const { rows } = await User.create(username, email, hashed, role);
+    const { rows } = await User.create(username, email, hashed, normalizedRole);
     res.status(201).json(rows[0]);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Email déjà utilisé' });

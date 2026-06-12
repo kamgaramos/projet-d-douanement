@@ -29,9 +29,7 @@
 
   <section class="table-section">
     <div class="table-header">
-      <h2>
-        {{ currentUser?.role === 'douanier' ? 'Dossiers à Traiter & Historique' : 'Liste de mes Cargaisons & Déclarations' }}
-      </h2>
+      <h2>{{ dashboardTitle }}</h2>
       <button class="btn btn-primary" *ngIf="currentUser?.role === 'declarant'" (click)="openModal()">
         + Nouvelle Cargaison
       </button>
@@ -48,6 +46,7 @@
             <th>Valeur ($)</th>
             <th>Droits ($)</th>
             <th>Statut</th>
+            <th>Transitaire</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -81,11 +80,33 @@
                 'badge-secondary': item.statut === 'brouillon' || item.statut === 'Draft'
               }">{{ item.statut }}</span>
             </td>
+            <td>
+              <span [ngClass]="{
+                'text-assigned': item.transitaire_id,
+                'text-unassigned': !item.transitaire_id
+              }">
+                {{ item.transitaire_id ? ('Transitaire #' + item.transitaire_id) : 'Non assigné' }}
+              </span>
+            </td>
             
             <td>
-              <button class="btn-action" title="Voir les détails">👁️</button>
-              
-              <!-- Bouton Soumettre pour les déclarants avec statut brouillon -->
+              <button 
+                *ngIf="currentUser?.role === 'transitaire' && normalizeStatus(item.statut) === 'en_attente_offres'" 
+                class="btn-offer" 
+                title="Répondre à l'offre" 
+                (click)="faireOffre(item)">
+                💼 Répondre à l'offre
+              </button>
+
+
+              <button 
+                *ngIf="currentUser?.role === 'declarant'" 
+                class="btn-action" 
+                title="Voir les détails" 
+                (click)="voirDetails(item)">
+                👁️ Voir
+              </button>
+
               <button 
                 *ngIf="currentUser?.role === 'declarant' && item.statut === 'brouillon'" 
                 class="btn-submit" 
@@ -93,7 +114,15 @@
                 (click)="soumettre(item.id)">
                 📤 Soumettre
               </button>
-              
+
+              <button 
+                *ngIf="currentUser?.role === 'declarant' && item.statut === 'brouillon'" 
+                class="btn-delete" 
+                title="Supprimer la cargaison" 
+                (click)="supprimerDeclaration(item)">
+                🗑️ Supprimer
+              </button>
+
               <span *ngIf="currentUser?.role === 'douanier' && (item.statut === 'En attente' || item.statut === 'en attente')" class="douane-actions-group">
                 <button class="btn-verify approve" title="Approuver le dossier" (click)="onUpdateStatus(item.id, 'Approuvé')">
                   ✔️
@@ -105,7 +134,7 @@
             </td>
           </tr>
           <tr *ngIf="declarations.length === 0">
-            <td colspan="8" class="text-center">Aucune cargaison enregistrée pour le moment.</td>
+            <td colspan="9" class="text-center">Aucune cargaison enregistrée pour le moment.</td>
           </tr>
         </tbody>
       </table>
@@ -156,6 +185,69 @@
           <button type="submit" class="btn btn-primary" [disabled]="cargaisonForm.invalid">Enregistrer la cargaison</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showOfferModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>Répondre à l'offre - {{ selectedOfferDeclarationRef }}</h2>
+      <button class="close-btn" (click)="closeOfferModal()">&times;</button>
+    </div>
+
+    <form [formGroup]="offerForm" (ngSubmit)="soumettreOffre()" class="modal-form">
+      <div class="form-group">
+        <label for="mode_transport">Mode de déplacement :</label>
+        <select id="mode_transport" formControlName="mode_transport" class="form-control">
+          <option value="">-- Sélectionner un mode --</option>
+          <option value="Conteneur">Conteneur</option>
+          <option value="Avion">Avion</option>
+          <option value="Camion">Camion</option>
+          <option value="Train">Train</option>
+          <option value="Multimodal">Multimodal</option>
+        </select>
+        <div *ngIf="offerForm.get('mode_transport')?.invalid && offerForm.get('mode_transport')?.touched" class="error-msg">
+          Le mode de déplacement est requis.
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="montant_prestation">Montant de la prestation :</label>
+          <input type="number" id="montant_prestation" formControlName="montant_prestation" class="form-control" placeholder="Ex: 1500"/>
+        </div>
+        <div class="form-group">
+          <label for="delai_estime_jours">Délai estimé (jours) :</label>
+          <input type="number" id="delai_estime_jours" formControlName="delai_estime_jours" class="form-control" placeholder="Ex: 10"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message (optionnel) :</label>
+        <textarea id="message" formControlName="message" class="form-control" rows="3" placeholder="Détails ou remarques supplémentaires..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeOfferModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary" [disabled]="offerForm.invalid">Envoyer l'offre</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Panneau de Chat -->
+<div class="chat-overlay" *ngIf="showChatPanel" (click)="fermerChat()">
+  <div class="chat-panel" (click)="$event.stopPropagation()">
+    <div class="chat-header">
+      <h3>💬 Chat - {{ selectedDeclarationRef }}</h3>
+      <button class="close-chat" (click)="fermerChat()">&times;</button>
+    </div>
+    <div class="chat-content">
+      <app-chat 
+        [declarationId]="selectedDeclarationId"
+        [declarationReference]="selectedDeclarationRef">
+      </app-chat>
     </div>
   </div>
 </div>

@@ -1,0 +1,211 @@
+<div class="declaration-details-container">
+  <!-- Navigation -->
+  <div class="breadcrumb">
+    <button class="btn-back" (click)="retourAuDashboard()">
+      ← Retour au tableau de bord
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-container" *ngIf="isLoading">
+    <div class="loading-spinner">⏳ Chargement de la déclaration...</div>
+  </div>
+
+  <!-- Erreur -->
+  <div class="error-container" *ngIf="errorMessage && !isLoading">
+    <div class="error-message">
+      ⚠️ {{ errorMessage }}
+    </div>
+  </div>
+
+  <!-- Contenu principal -->
+  <div class="main-content" *ngIf="declaration && !isLoading">
+    
+    <!-- En-tête de la déclaration -->
+    <div class="declaration-header">
+      <div class="header-info">
+        <h1>{{ declaration.reference || ('DEC-' + declaration.id) }}</h1>
+        <span class="statut-badge" [ngClass]="getStatutClass(declaration.statut)">
+          {{ getStatutDisplay(declaration.statut) }}
+        </span>
+      </div>
+      
+      <div class="header-actions">
+        <button class="btn-chat-toggle" (click)="toggleChat()" [class.active]="showChat">
+          💬 {{ showChat ? 'Masquer' : 'Afficher' }} le chat
+        </button>
+      </div>
+    </div>
+
+    <!-- Grille à deux colonnes -->
+    <div class="content-grid" [class.chat-hidden]="!showChat">
+      
+      <!-- Colonne gauche : Détails de la déclaration -->
+      <div class="declaration-info">
+        <div class="info-card">
+          <h3>📋 Informations de la déclaration</h3>
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Référence :</label>
+              <span>{{ declaration.reference || ('DEC-' + declaration.id) }}</span>
+            </div>
+            
+            <div class="info-item">
+              <label>Statut :</label>
+              <span class="statut-badge" [ngClass]="getStatutClass(declaration.statut)">
+                {{ getStatutDisplay(declaration.statut) }}
+              </span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.port_depart">
+              <label>Port de départ :</label>
+              <span>🚢 {{ declaration.port_depart }}</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.port_arrivee">
+              <label>Port d'arrivée :</label>
+              <span>🏖️ {{ declaration.port_arrivee }}</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.date_embarquement">
+              <label>Date d'embarquement :</label>
+              <span>📅 {{ declaration.date_embarquement | date:'dd/MM/yyyy' }}</span>
+            </div>
+            
+            <div class="info-item">
+              <label>Droits de douane :</label>
+              <span class="montant">💰 {{ declaration.montant_droits_douane || '0.00' }} €</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.created_at">
+              <label>Date de création :</label>
+              <span>🗓️ {{ declaration.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informations de la marchandise -->
+        <div class="info-card" *ngIf="declaration.description || declaration.type_marchandise">
+          <h3>📦 Marchandise</h3>
+          
+          <div class="info-grid">
+            <div class="info-item" *ngIf="declaration.description">
+              <label>Description :</label>
+              <span>{{ declaration.description }}</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.type_marchandise">
+              <label>Type :</label>
+              <span>🏷️ {{ declaration.type_marchandise || declaration.typeMarchandise }}</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.poids">
+              <label>Poids :</label>
+              <span>⚖️ {{ declaration.poids }} kg</span>
+            </div>
+            
+            <div class="info-item" *ngIf="declaration.valeur">
+              <label>Valeur :</label>
+              <span class="montant">💵 {{ declaration.valeur }} USD</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions disponibles -->
+        <div class="info-card">
+          <h3>⚡ Actions disponibles</h3>
+          
+          <div class="actions-grid">
+            <button class="action-btn documents" (click)="afficherDocuments()">
+              📄 Voir les documents
+            </button>
+            
+            <button class="action-btn offres" 
+              *ngIf="declaration.statut === 'EN_ATTENTE_OFFRES' || declaration.statut === 'EN_COURS_DE_TRANSPORT'"
+              (click)="afficherOffres()">
+              💰 Voir les offres
+            </button>
+            
+            <button class="action-btn historique" (click)="afficherHistorique()">
+              📊 Voir l'historique
+            </button>
+            
+            <button class="action-btn notifications" (click)="afficherNotifications()">
+              🔔 Notifications
+            </button>
+          </div>
+        </div>
+
+        <!-- Section Documents -->
+        <div class="info-card" *ngIf="showDocuments">
+          <h3>📄 Documents</h3>
+          <div *ngIf="documents.length > 0; else noDocuments" class="items-list">
+            <div class="item-row" *ngFor="let doc of documents">
+              <span>{{ doc.nom }}</span>
+              <small>{{ doc.date | date:'dd/MM/yyyy' }}</small>
+              <button class="btn-small">⬇️ Télécharger</button>
+            </div>
+          </div>
+          <ng-template #noDocuments>
+            <p class="text-muted">Aucun document trouvé.</p>
+          </ng-template>
+        </div>
+
+        <!-- Section Offres -->
+        <div class="info-card" *ngIf="showOffers">
+          <h3>💰 Offres reçues</h3>
+          <div *ngIf="offres.length > 0; else noOffers" class="items-list">
+            <div class="item-row" *ngFor="let offre of offres">
+              <span>{{ offre.transitaire }}</span>
+              <span class="montant">{{ offre.montant }} €</span>
+              <small>{{ offre.delai }} jours</small>
+              <button class="btn-small" *ngIf="currentUser?.role === 'declarant'">✅ Accepter</button>
+            </div>
+          </div>
+          <ng-template #noOffers>
+            <p class="text-muted">Aucune offre reçue pour le moment.</p>
+          </ng-template>
+        </div>
+
+        <!-- Section Historique -->
+        <div class="info-card" *ngIf="showHistory">
+          <h3>📊 Historique</h3>
+          <div *ngIf="historique.length > 0; else noHistory" class="items-list">
+            <div class="item-row" *ngFor="let item of historique">
+              <span>{{ item.action }}</span>
+              <small>{{ item.date | date:'dd/MM/yyyy HH:mm' }}</small>
+              <small class="text-muted">{{ item.utilisateur }}</small>
+            </div>
+          </div>
+          <ng-template #noHistory>
+            <p class="text-muted">Aucun historique disponible.</p>
+          </ng-template>
+        </div>
+
+        <!-- Section Notifications -->
+        <div class="info-card" *ngIf="showNotifications">
+          <h3>🔔 Notifications</h3>
+          <div *ngIf="notifications.length > 0; else noNotifications" class="items-list">
+            <div class="item-row" *ngFor="let notif of notifications">
+              <strong>{{ notif.titre }}</strong>
+              <p>{{ notif.message }}</p>
+              <small>{{ notif.date | date:'dd/MM/yyyy HH:mm' }}</small>
+            </div>
+          </div>
+          <ng-template #noNotifications>
+            <p class="text-muted">Aucune notification.</p>
+          </ng-template>
+        </div>
+      </div>
+
+      <!-- Colonne droite : Chat -->
+      <div class="chat-section" *ngIf="showChat">
+        <app-chat 
+          [declarationId]="declaration.id"
+          [declarationReference]="declaration.reference || ('DEC-' + declaration.id)">
+        </app-chat>
+      </div>
+    </div>
+  </div>
+</div>

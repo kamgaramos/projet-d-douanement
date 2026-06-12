@@ -11,6 +11,10 @@ const { initModels } = require('./models');
 const authRoutes = require('./routes/auth');
 const declarationRoutes = require('./routes/declarations');
 const marchandiseRoutes = require('./routes/marchandises');
+const offreRoutes = require('./routes/offres');
+const documentRoutes = require('./routes/documents');
+const messageRoutes = require('./routes/messages');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -40,6 +44,10 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/declarations', declarationRoutes);
 app.use('/api/marchandises', marchandiseRoutes);
+app.use('/api/offres', offreRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });

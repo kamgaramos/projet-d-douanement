@@ -4,11 +4,13 @@ import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { DeclarationService } from '../core/services/declaration.service';
 import { CargaisonService } from '../core/services/cargaison.service';
+import { OffreService } from '../core/services/offre.service';
+import { ChatComponent } from '../chat/chat.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ChatComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -16,13 +18,27 @@ export class DashboardComponent implements OnInit {
   currentUser: any = null;
   declarations: any[] = [];
   cargaisonForm!: FormGroup;
+  offerForm!: FormGroup;
   showFormModal: boolean = false;
+  showOfferModal: boolean = false;
+  selectedOfferDeclaration: any = null;
+  selectedOfferDeclarationRef: string = '';
+  
+  // Propriétés pour le chat
+  selectedDeclarationId: number | null = null;
+  selectedDeclarationRef: string = '';
+  showChatPanel: boolean = false;
+  
+  // Propriétés du dashboard
+  // (dashboardTitle est fourni via le getter ci-dessous)
+
 
   constructor(
     private router: Router, 
     private fb: FormBuilder,
     private declarationService: DeclarationService,
-    private cargaisonService: CargaisonService
+    private cargaisonService: CargaisonService,
+    private offreService: OffreService
   ) {}
 
   ngOnInit(): void {
@@ -40,6 +56,7 @@ export class DashboardComponent implements OnInit {
 
     this.loadRealData();
     this.initCargaisonForm();
+    this.initOfferForm();
   }
 
   initCargaisonForm() {
@@ -65,6 +82,104 @@ export class DashboardComponent implements OnInit {
       error: (err) => {
         alert('Erreur lors de la soumission de la déclaration');
         console.error(err);
+      }
+    });
+  }
+
+  initOfferForm() {
+    this.offerForm = this.fb.group({
+      mode_transport: ['', [Validators.required]],
+      montant_prestation: ['', [Validators.required, Validators.min(1)]],
+      delai_estime_jours: ['', [Validators.required, Validators.min(1)]],
+      message: ['']
+    });
+  }
+
+  openOfferModal(declaration: any): void {
+    this.selectedOfferDeclaration = declaration;
+    this.selectedOfferDeclarationRef = declaration.reference || ('DEC-' + declaration.id);
+    this.showOfferModal = true;
+    this.offerForm.reset({
+      mode_transport: '',
+      montant_prestation: '',
+      delai_estime_jours: '',
+      message: ''
+    });
+  }
+
+  closeOfferModal(): void {
+    this.showOfferModal = false;
+    this.selectedOfferDeclaration = null;
+    this.selectedOfferDeclarationRef = '';
+    this.offerForm.reset();
+  }
+
+  faireOffre(declaration: any) {
+    this.openOfferModal(declaration);
+  }
+
+  soumettreOffre(): void {
+    if (!this.selectedOfferDeclaration || this.offerForm.invalid) {
+      return;
+    }
+
+    const payload = {
+      declaration_id: this.selectedOfferDeclaration.id,
+      mode_transport: this.offerForm.value.mode_transport,
+      montant_prestation: this.offerForm.value.montant_prestation,
+      delai_estime_jours: this.offerForm.value.delai_estime_jours,
+      message: this.offerForm.value.message
+    };
+
+    console.log('[DEBUG] soumettreOffre payload =>', payload);
+
+    this.offreService.soumettreOffre(payload).subscribe({
+      next: () => {
+        alert('Offre envoyée avec succès.');
+        this.closeOfferModal();
+        this.loadRealData();
+      },
+      error: (err) => {
+        // Interception spécifique 409 Conflict (offre déjà soumise)
+        const status = err?.status ?? err?.error?.status;
+        if (status === 409) {
+          alert('Vous avez déjà soumis une offre pour cette déclaration');
+          return;
+        }
+
+        console.error('Erreur lors de l\'envoi de l\'offre :', err);
+        alert('Impossible d\'envoyer l\'offre.');
+      }
+    });
+  }
+
+  contacterDeclarant(declaration: any): void {
+    this.ouvrirChat(declaration);
+  }
+
+  // Ouvrir les détails d'une déclaration
+  ouvrirDeclaration(id: number): void {
+    this.router.navigate(['/declaration-details', id]);
+  }
+
+  // Alias pour compatibilité avec le template
+  voirDetails(declaration: any): void {
+    this.ouvrirDeclaration(declaration.id);
+  }
+
+  supprimerDeclaration(declaration: any): void {
+    if (!confirm('Voulez-vous vraiment supprimer cette cargaison ? Cette action est irréversible.')) {
+      return;
+    }
+
+    this.declarationService.supprimerDeclaration(declaration.id).subscribe({
+      next: () => {
+        alert('Cargaison supprimée avec succès.');
+        this.loadRealData();
+      },
+      error: (err) => {
+        console.error('Erreur lors de la suppression:', err);
+        alert('Impossible de supprimer cette cargaison.');
       }
     });
   }
@@ -156,4 +271,47 @@ export class DashboardComponent implements OnInit {
     localStorage.removeItem('user');
     this.router.navigate(['/login']);
   }
+
+  // Ouvrir le chat pour une déclaration spécifique
+  ouvrirChat(declaration: any): void {
+    this.selectedDeclarationId = declaration.id;
+    this.selectedDeclarationRef = declaration.reference || ('DEC-' + declaration.id);
+    this.showChatPanel = true;
+  }
+
+  // Fermer le chat
+  fermerChat(): void {
+    this.showChatPanel = false;
+    this.selectedDeclarationId = null;
+    this.selectedDeclarationRef = '';
+  }
+
+  get dashboardTitle(): string {
+    if (this.currentUser?.role === 'douanier') {
+      return 'Dossiers à Traiter & Historique';
+    }
+    if (this.currentUser?.role === 'transitaire') {
+      return 'Offres en attente';
+    }
+    if (this.currentUser?.role === 'declarant') {
+      return 'Mes déclarations & cargaisons';
+    }
+    return 'Liste de mes déclarations';
+  }
+
+  getTransitaireLabel(declaration: any): string {
+    return declaration?.transitaire_id ? `Transitaire #${declaration.transitaire_id}` : 'Non assigné';
+  }
+
+  /**
+   * Normalise un statut : trim, suppression espaces multiples, passage en minuscule.
+   * Utile pour éviter les problèmes de format (ex: "EN_ATTENTE_OFFRES ", "en attente offres", etc.)
+   */
+  normalizeStatus(statut: any): string {
+    return String(statut ?? '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .toLowerCase();
+  }
+
 }

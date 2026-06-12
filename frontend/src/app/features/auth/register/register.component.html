@@ -62,8 +62,9 @@
       <div class="form-group">
         <label for="role">Rôle :</label>
         <select id="role" formControlName="role" class="form-control">
-          <option value="declarant">Déclarant</option>
-          <option value="douanier">Douanier</option>
+          <option *ngFor="let role of availableRoles" [value]="role.value">
+            {{ role.label }}
+          </option>
         </select>
       </div>
 

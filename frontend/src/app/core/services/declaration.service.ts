@@ -20,6 +20,11 @@ export class DeclarationService {
     return this.http.get<any[]>(this.apiUrl);
   }
 
+  // Récupérer une déclaration par ID
+  getDeclarationById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
   // Créer une nouvelle cargaison
   createCargaison(cargaisonData: any): Observable<any> {
     return this.http.post<any>(this.apiUrl, cargaisonData);
@@ -28,5 +33,20 @@ export class DeclarationService {
   // Mettre à jour le statut (utile pour le douanier plus tard)
   updateStatut(id: number, status: string): Observable<any> {
     return this.http.patch<any>(`${this.apiUrl}/${id}/statut`, { statut: status });
+  }
+
+  // Accepter une déclaration comme transitaire
+  accepterDeclaration(id: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${id}/accepter`, {});
+  }
+
+  // Accepter une offre de transitaire comme déclarant
+  accepterOffre(id: number, transitaire_id: number): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${id}/accepter-offre`, { transitaire_id });
+  }
+
+  // Supprimer une déclaration en brouillon
+  supprimerDeclaration(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 }

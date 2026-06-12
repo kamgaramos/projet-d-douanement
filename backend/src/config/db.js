@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/dedouanement_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://admin_user:SecurePassword123!@localhost:5433/dedouanement_platform',
 });
 
 // Définition explicite de la fonction

@@ -1,0 +1,133 @@
+<div class="chat-container" *ngIf="declarationId">
+  <!-- En-tête du chat -->
+  <div class="chat-header">
+    <div class="chat-title">
+      <h3>💬 Messagerie</h3>
+      <span class="declaration-ref" *ngIf="declarationReference">{{ declarationReference }}</span>
+    </div>
+    <div class="chat-actions">
+      <button 
+        class="btn-refresh" 
+        (click)="actualiserMessages()" 
+        [disabled]="isLoadingMessages"
+        title="Actualiser les messages">
+        🔄
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="chat-stats" *ngIf="statistiques && !isLoadingMessages">
+    <span class="stat-item">
+      📝 {{ statistiques.total_messages }} message(s)
+    </span>
+    <span class="stat-item unread" *ngIf="statistiques.messages_non_lus > 0">
+      🔔 {{ statistiques.messages_non_lus }} non lu(s)
+    </span>
+  </div>
+
+  <!-- Zone des messages -->
+  <div class="messages-container" #messagesContainer>
+    <!-- Loading des messages -->
+    <div class="loading-messages" *ngIf="isLoadingMessages">
+      <div class="loading-spinner">⏳ Chargement des messages...</div>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div class="error-message" *ngIf="errorMessage && !isLoadingMessages">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <!-- Liste des messages -->
+    <div class="messages-list" *ngIf="!isLoadingMessages && messages.length > 0">
+      <div 
+        *ngFor="let message of messages" 
+        class="message-item"
+        [ngClass]="{
+          'own-message': message.is_own_message,
+          'other-message': !message.is_own_message,
+          'unread-message': !message.read_status && !message.is_own_message
+        }">
+        
+        <div class="message-header">
+          <span class="sender-name">{{ message.sender.name }}</span>
+          <span class="sender-role" [ngClass]="getRoleClass(message.sender.role)">
+            {{ getRoleDisplayName(message.sender.role) }}
+          </span>
+          <span class="message-date">{{ formatDate(message.created_at) }}</span>
+        </div>
+        
+        <div class="message-content">
+          {{ message.content }}
+        </div>
+
+        <div class="message-status" *ngIf="message.is_own_message">
+          <span class="read-status" [ngClass]="{'read': message.read_status, 'unread': !message.read_status}">
+            {{ message.read_status ? '✓ Lu' : '○ Non lu' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Message vide -->
+    <div class="empty-messages" *ngIf="!isLoadingMessages && messages.length === 0 && !errorMessage">
+      <div class="empty-state">
+        <h4>💭 Aucun message pour l'instant</h4>
+        <p>Commencez la conversation en envoyant le premier message !</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulaire d'envoi -->
+  <div class="message-form">
+    <div class="error-banner" *ngIf="errorMessage">
+      ⚠️ {{ errorMessage }}
+    </div>
+    <form [formGroup]="messageForm" (ngSubmit)="envoyerMessage()" class="send-form" *ngIf="declarationId">
+      <div class="input-group">
+        <textarea 
+          formControlName="content"
+          class="message-input"
+          placeholder="Tapez votre message ici..."
+          rows="3"
+          [disabled]="isSending || isLoadingMessages">
+        </textarea>
+        
+        <button 
+          type="submit" 
+          class="send-button"
+          [disabled]="messageForm.invalid || isSending || isLoadingMessages">
+          {{ isSending ? '📤 Envoi...' : '📤 Envoyer' }}
+        </button>
+      </div>
+      
+      <!-- Validation des erreurs -->
+      <div class="form-errors" *ngIf="messageContent?.invalid && messageContent?.touched">
+        <span class="error-text" *ngIf="messageContent?.errors?.['required']">
+          Le message ne peut pas être vide
+        </span>
+        <span class="error-text" *ngIf="messageContent?.errors?.['emptyMessage']">
+          Le message ne peut contenir que des espaces
+        </span>
+        <span class="error-text" *ngIf="messageContent?.errors?.['maxlength']">
+          Le message ne peut pas dépasser 2000 caractères
+        </span>
+      </div>
+      
+      <div class="form-help">
+        <small>💡 Utilisez le bouton Envoyer pour publier votre message</small>
+      </div>
+    </form>
+    <div class="no-form" *ngIf="!declarationId">
+      <p>⚠️ Sélectionnez une déclaration pour commencer à discuter</p>
+    </div>
+  </div>
+</div>
+
+<!-- Message quand aucune déclaration n'est sélectionnée -->
+<div class="no-declaration" *ngIf="!declarationId">
+  <div class="placeholder-state">
+    <h4>📋 Sélectionnez une déclaration</h4>
+    <p>Choisissez une déclaration dans la liste pour voir les messages associés.</p>
+  </div>
+</div>

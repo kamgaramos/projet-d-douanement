@@ -4,89 +4,51 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-  };
-  message?: string;
-}
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  // URL complète forcée pour éviter les ambiguïtés
   private loginUrl = 'http://localhost:5000/api/auth/login';
   private registerUrl = 'http://localhost:5000/api/auth/register';
-  
   private currentUserSubject = new BehaviorSubject<any>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(
-    private http: HttpClient,
-    private router: Router
-  ) {
-    this.checkExistingAuth();
+  constructor(private http: HttpClient, private router: Router) {
+    const user = localStorage.getItem('user');
+    if (user) this.currentUserSubject.next(JSON.parse(user));
   }
 
-  login(credentials: LoginCredentials): Observable<AuthResponse> {
-    // Ajout explicite du header Content-Type pour le serveur Node.js
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    
-    console.log("Service: Envoi de la requête de login vers", this.loginUrl);
-    
-    return this.http.post<AuthResponse>(this.loginUrl, credentials, { headers })
-      .pipe(
-        tap({
-          next: (response) => {
-            console.log("Service: Réponse reçue du serveur", response);
-            if (response.token && response.user) {
-              localStorage.setItem('token', response.token);
-              localStorage.setItem('user', JSON.stringify(response.user));
-              this.currentUserSubject.next(response.user);
-            }
-          },
-          error: (err) => {
-            console.error("Service: Erreur lors de la requête HTTP", err);
-          }
-        })
-      );
-  }
-
-  register(userData: any): Observable<any> {
-    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
-    return this.http.post<any>(this.registerUrl, userData, { headers });
-  }
-
-  logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    this.currentUserSubject.next(null);
-    this.router.navigate(['/login']);
-  }
-
-  isAuthenticated(): boolean {
+  // --- Méthodes exigées par les Guards/Interceptors ---
+  isLoggedIn(): boolean {
     return !!localStorage.getItem('token');
   }
 
-  getCurrentUser(): any {
-    const userJson = localStorage.getItem('user');
-    return userJson ? JSON.parse(userJson) : null;
+  getToken(): string | null {
+    return localStorage.getItem('token');
   }
 
-  private checkExistingAuth(): void {
-    const user = this.getCurrentUser();
-    if (user) {
-      this.currentUserSubject.next(user);
-    }
+  getUserRole(): string | null {
+    const userJson = localStorage.getItem('user');
+    if (!userJson) return null;
+    return JSON.parse(userJson).role;
+  }
+
+  // --- Méthodes Métier ---
+  login(credentials: any): Observable<any> {
+    return this.http.post(this.loginUrl, credentials).pipe(
+      tap((res: any) => {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        this.currentUserSubject.next(res.user);
+      })
+    );
+  }
+
+  // CORRECTION : Accepte un objet unique (payload)
+  register(userData: { username: string, email: string, password: string, role: string }): Observable<any> {
+    return this.http.post(this.registerUrl, userData);
+  }
+
+  logout(): void {
+    localStorage.clear();
+    this.currentUserSubject.next(null);
+    this.router.navigate(['/login']);
   }
 }

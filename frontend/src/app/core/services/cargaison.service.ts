@@ -11,7 +11,7 @@ export class CargaisonService {
   constructor(private http: HttpClient) {}
 
   soumettreDeclaration(id: number, statut?: string): Observable<any> {
-    const statutFinal = statut || 'en attente';
+    const statutFinal = statut || 'EN_ATTENTE_OFFRES';
     return this.http.patch<any>(`${this.apiUrl}/${id}/statut`, { statut: statutFinal });
   }
 

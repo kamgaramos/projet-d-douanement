@@ -13,6 +13,12 @@ import { AuthService } from '../../../core/services/auth.service';
 })
 export class RegisterComponent {
 
+  availableRoles = [
+    { value: 'declarant', label: 'Déclarant' },
+    { value: 'douanier', label: 'Douanier' },
+    { value: 'transitaire', label: 'Transitaire' }
+  ];
+
   registerForm: FormGroup;
   errorMessage: string = '';
   successMessage: string = '';
@@ -27,7 +33,7 @@ export class RegisterComponent {
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
-      role: ['declarant']
+      role: ['declarant', Validators.required]
     });
   }
 
@@ -40,9 +46,9 @@ export class RegisterComponent {
     if (this.registerForm.invalid) return;
 
     this.isLoading = true;
-    const { username, email, password, role } = this.registerForm.value;
 
-    this.authService.register(username, email, password, role).subscribe({
+    // MODIFICATION : On envoie l'objet entier au service au lieu de 4 arguments séparés
+    this.authService.register(this.registerForm.value).subscribe({
       next: () => {
         this.isLoading = false;
         this.successMessage = 'Compte créé avec succès ! Redirection...';
