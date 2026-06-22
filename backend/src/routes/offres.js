@@ -2,6 +2,7 @@ const router = require('express').Router();
 const authMiddleware = require('../middleware/auth');
 const { soumettreOffre, listerOffresParDossier, listerMesOffres } = require('../controllers/offreController');
 const { executeQuery } = require('../config/db'); // On importe l'utilitaire SQL
+const { creerNotification } = require('../utils/notificationHelper');
 
 // Toutes les routes des offres nécessitent une authentification
 router.use(authMiddleware);
@@ -29,10 +30,48 @@ router.patch('/:id/accepter', async (req, res) => {
     
     const declarationId = result.rows[0].declaration_id;
 
-    // 3. Passer la déclaration en 'EN_COURS'
-    await executeQuery('UPDATE declarations SET statut = $1 WHERE id = $2', ['EN_COURS', declarationId]);
+    // 3. Passer la déclaration en file de validation douane
+    // Objectif: passer automatiquement de EN_ATTENTE_OFFRES à EN_ATTENTE_VALIDATION_DOUANE
+    const updateResult = await executeQuery(
+      'UPDATE declarations SET statut = $1 WHERE id = $2 RETURNING *',
+      ['EN_ATTENTE_VALIDATION_DOUANE', declarationId]
+    );
 
-    res.status(200).json({ message: 'Offre acceptée. Dossier en cours de traitement.' });
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Déclaration non trouvée' });
+    }
+
+    // 4. Notification: prévenir tous les douaniers
+    try {
+      const douaniersResult = await executeQuery(
+        "SELECT id FROM users WHERE role = 'douanier'"
+      );
+      const douaniers = douaniersResult.rows.map(r => r.id);
+
+      const declarationReference = updateResult.rows[0].reference;
+      const ancien_statut = 'EN_ATTENTE_OFFRES';
+      const nouveau_statut = 'EN_ATTENTE_VALIDATION_DOUANE';
+
+      await Promise.all(
+        douaniers.map(user_id =>
+          creerNotification(
+            user_id,
+            declarationId,
+            'STATUT_CHANGE',
+            `Statut de la déclaration ${declarationReference} changé de "${ancien_statut}" à "${nouveau_statut}"`,
+            {
+              ancien_statut,
+              nouveau_statut
+            }
+          )
+        )
+      );
+    } catch (notificationError) {
+      // Ne pas bloquer la transition si la notification échoue
+      console.error('Erreur lors de la création des notifications douaniers:', notificationError);
+    }
+
+    res.status(200).json({ message: 'Offre acceptée. Dossier en attente de validation douane.' });
   } catch (error) {
     console.error('Erreur lors de l\'acceptation :', error);
     res.status(500).json({ error: 'Erreur serveur lors de l\'acceptation' });
@@ -40,3 +79,4 @@ router.patch('/:id/accepter', async (req, res) => {
 });
 
 module.exports = router;
+

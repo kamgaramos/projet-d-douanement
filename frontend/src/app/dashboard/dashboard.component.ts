@@ -56,16 +56,48 @@ export class DashboardComponent implements OnInit {
 
     this.loadRealData();
     this.initCargaisonForm();
+    this.loadNomenclature();
     this.initOfferForm();
   }
+
+  nomenclatures: Array<{ code_sh: string; designation: string }> = [];
+  nomenclatureLoading = false;
+  nomenclatureError = '';
 
   initCargaisonForm() {
     this.cargaisonForm = this.fb.group({
       description: ['', [Validators.required, Validators.minLength(5)]],
+      // Champ nomenclature
+      code_sh: ['', [Validators.required]],
       typeMarchandise: ['', [Validators.required]],
       poids: ['', [Validators.required, Validators.min(1)]],
       valeur: ['', [Validators.required, Validators.min(1)]]
     });
+  }
+
+  private loadNomenclature() {
+    this.nomenclatureLoading = true;
+    this.nomenclatureError = '';
+
+    // Ton backend (même host/port que les autres services du projet)
+    const apiUrl = 'http://localhost:5000/api/nomenclature';
+
+    // HttpClient n’est pas injecté pour l’instant dans ce composant.
+    // On l’utilise via fetch pour ne pas changer le service existant.
+    fetch(apiUrl)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+      })
+      .then((data) => {
+        this.nomenclatures = Array.isArray(data) ? data : [];
+        this.nomenclatureLoading = false;
+      })
+      .catch((err) => {
+        console.error('Erreur GET /api/nomenclature:', err);
+        this.nomenclatureError = 'Impossible de charger la nomenclature.';
+        this.nomenclatureLoading = false;
+      });
   }
 
   // Méthode pour charger les déclarations (alias pour compatibilité)
@@ -241,6 +273,10 @@ export class DashboardComponent implements OnInit {
 
     const payload = {
       description: this.cargaisonForm.value.description,
+      code_sh: this.cargaisonForm.value.code_sh,
+      // optionnel: si ton backend attend aussi une designation
+      // (sinon, il peut l’ignorer)
+      designation: this.nomenclatures.find(n => n.code_sh === this.cargaisonForm.value.code_sh)?.designation,
       typeMarchandise: this.cargaisonForm.value.typeMarchandise,
       poids: this.cargaisonForm.value.poids,
       valeur: this.cargaisonForm.value.valeur

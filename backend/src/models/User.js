@@ -27,6 +27,13 @@ const User = {
     query('SELECT * FROM users WHERE email = $1', [email]),
   findById: (id) =>
     query('SELECT id, username, email, role, created_at FROM users WHERE id = $1', [id]),
+
+  findByRole: (role) => {
+    return query(
+      'SELECT id, username, email, role, created_at FROM users WHERE role = $1 ORDER BY created_at DESC',
+      [role]
+    );
+  }
 };
 
 module.exports = User;

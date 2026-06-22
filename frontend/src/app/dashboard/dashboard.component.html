@@ -158,6 +158,21 @@
         </div>
 
         <div class="form-group">
+          <label for="code_sh">Désignation (Code SH) :</label>
+          <select id="code_sh" formControlName="code_sh" class="form-control">
+            <option value="" selected disabled>-- Choisir une désignation --</option>
+            <option *ngFor="let item of nomenclatures" [value]="item.code_sh">
+              {{ item.designation }}
+            </option>
+          </select>
+          <div *ngIf="nomenclatureLoading" class="error-msg" style="margin-top: 6px;">Chargement...</div>
+          <div *ngIf="nomenclatureError" class="error-msg" style="margin-top: 6px;">{{ nomenclatureError }}</div>
+          <div *ngIf="cargaisonForm.get('code_sh')?.invalid && cargaisonForm.get('code_sh')?.touched" class="error-msg">
+            Le code SH est requis.
+          </div>
+        </div>
+
+        <div class="form-group">
           <label for="typeMarchandise">Type de marchandise :</label>
           <select id="typeMarchandise" formControlName="typeMarchandise" class="form-control">
             <option value="">-- Sélectionner un type --</option>

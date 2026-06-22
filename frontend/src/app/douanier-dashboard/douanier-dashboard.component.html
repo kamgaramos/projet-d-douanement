@@ -62,7 +62,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let declaration of declarationsEnAttente" class="declaration-row">
+          <tr *ngFor="let declaration of declarationsEnAttente" class="declaration-row" [class.unread-declaration]="hasUnreadNotification(declaration.id)">
             <td>
               <strong class="reference-code">{{ declaration.reference || ('DEC-' + declaration.id) }}</strong>
             </td>
