@@ -5,7 +5,6 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-// Importation de l'objet db complet
 const db = require('./config/db'); 
 const { initModels } = require('./models'); 
 const authRoutes = require('./routes/auth');
@@ -15,6 +14,9 @@ const offreRoutes = require('./routes/offres');
 const documentRoutes = require('./routes/documents');
 const messageRoutes = require('./routes/messages');
 const notificationRoutes = require('./routes/notifications');
+const nomenclatureRoutes = require('./routes/nomenclatureRoutes');
+const dossierRoutes = require('./routes/dossiers');
+const douaneRoutes = require('./routes/douane');
 
 const app = express();
 
@@ -29,8 +31,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- MOUCHARD DE REQUÊTES (AJOUTÉ) ---
-// Ce log t'affichera chaque requête dans ton terminal VS Code
+// --- MOUCHARD DE REQUÊTES ---
 app.use((req, res, next) => {
   console.log(`[LOG] Requête reçue : ${req.method} ${req.url}`);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -38,7 +39,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-// ------------------------------------
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -48,12 +48,17 @@ app.use('/api/offres', offreRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
+// --- LIGNE AJOUTÉE ---
+app.use('/api/nomenclature', nomenclatureRoutes);
+app.use('/api/dossiers', dossierRoutes);
+app.use('/api/douane', douaneRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
-// Initialisation du serveur
+// Initialisation du serveur...
+// (Le reste de ton code ne change pas)
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
@@ -62,7 +67,6 @@ const startServer = async () => {
     console.log('🚀 Initialisation du serveur backend');
     console.log('=======================================\n');
 
-    // Test de connexion via l'objet db importé
     console.log('📦 Test de connexion à PostgreSQL...');
     const dbConnected = await db.testDatabaseConnection();
     
@@ -73,7 +77,7 @@ const startServer = async () => {
       console.log('✓ Base de données prête\n');
     }
 
-    const server = app.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`✓ Serveur démarré sur http://localhost:${PORT}`);
     });
 

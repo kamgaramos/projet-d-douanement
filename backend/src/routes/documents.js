@@ -12,10 +12,10 @@ const {
 router.use(authMiddleware);
 
 // POST /api/documents/upload - Upload de documents
-router.post('/upload', 
-  validateUploadData,
-  upload.array('documents', 5), // Champ 'documents', max 5 fichiers
+router.post('/upload',
+  upload.array('documents', 5), // Champ 'documents', max 5 fichiers — DOIT être AVANT la validation
   handleMulterError,
+  validateUploadData, // Validation APRÈS que Multer a parsé le FormData
   uploadDocuments
 );
 

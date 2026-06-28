@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MessageService, Message, MessageHistorique } from '../core/services/message.service';
@@ -16,7 +16,7 @@ function nonEmptyMessageValidator(control: AbstractControl): ValidationErrors | 
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css'
 })
-export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
+export class ChatComponent implements OnInit, OnChanges, OnDestroy, AfterViewChecked {
   @Input() declarationId: number | null = null;
   @Input() declarationReference: string = '';
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
@@ -32,6 +32,7 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
   statistiques: any = null;
 
   private shouldScrollToBottom: boolean = false;
+  private pollingInterval: any = null;
 
   constructor(
     private messageService: MessageService,
@@ -46,11 +47,34 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     // Récupérer l'utilisateur connecté
     const userJson = localStorage.getItem('user');
     this.currentUser = userJson ? JSON.parse(userJson) : null;
+    if (this.declarationId) this.startPolling();
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
+  /** Rafraîchit automatiquement les messages toutes les 5 secondes */
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollingInterval = setInterval(() => {
+      if (this.declarationId && !this.isLoadingMessages) {
+        this.chargerMessages(true);
+      }
+    }, 5000);
+  }
+
+  private stopPolling(): void {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['declarationId'] && this.declarationId) {
       this.chargerMessages();
+      this.startPolling();
     }
   }
 
@@ -61,10 +85,10 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
     }
   }
 
-  chargerMessages(): void {
+  chargerMessages(silent: boolean = false): void {
     if (!this.declarationId) return;
 
-    this.isLoadingMessages = true;
+    if (!silent) this.isLoadingMessages = true;
     this.errorMessage = '';
 
     this.messageService.obtenirHistoriqueMessages(this.declarationId).subscribe({
@@ -74,17 +98,17 @@ export class ChatComponent implements OnInit, OnChanges, AfterViewChecked {
         this.statistiques = response.statistiques;
         this.isLoadingMessages = false;
         this.shouldScrollToBottom = true;
-        
-        console.log(`💬 ${this.messages.length} messages chargés pour la déclaration ${this.declarationReference}`);
+
+        if (!silent) console.log(`💬 ${this.messages.length} messages chargés pour la déclaration ${this.declarationReference}`);
       },
       error: (error) => {
         console.error('Erreur lors du chargement des messages:', error);
-        this.errorMessage = 'Erreur lors du chargement des messages';
+        if (!silent) this.errorMessage = 'Erreur lors du chargement des messages';
         this.isLoadingMessages = false;
-        
-        if (error.status === 403) {
+
+        if (error.status === 403 && !silent) {
           this.errorMessage = 'Vous n\'êtes pas autorisé à voir ces messages';
-        } else if (error.status === 404) {
+        } else if (error.status === 404 && !silent) {
           this.errorMessage = 'Déclaration non trouvée';
         }
       }

@@ -28,6 +28,17 @@ const Declaration = {
     `, []);
   },
 
+  // --- MÉTHODE CRÉATION AJOUTÉE ICI ---
+  create: async (data) => {
+    const reference = `DEC-${Date.now()}`; 
+    const sql = `
+      INSERT INTO declarations (reference, declarant_id, statut)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    return executeQuery(sql, [reference, data.declarant_id, data.statut]);
+  },
+
   findById: (id) =>
     executeQuery(`
       SELECT d.*, m.description, m.type_marchandise, m.poids, m.valeur 
@@ -36,7 +47,6 @@ const Declaration = {
       WHERE d.id = $1
     `, [id]),
 
-  // AJOUTÉ : Nécessaire pour le dashboard global
   findAll: () =>
     executeQuery(`
       SELECT d.*, m.description, m.type_marchandise, m.poids, m.valeur 
@@ -45,7 +55,6 @@ const Declaration = {
       ORDER BY d.created_at DESC
     `, []),
 
-  // AJOUTÉ : Nécessaire pour voir les déclarations par utilisateur (SASA)
   findByDeclarant: (declarant_id) =>
     executeQuery(`
       SELECT d.*, m.description, m.type_marchandise, m.poids, m.valeur 

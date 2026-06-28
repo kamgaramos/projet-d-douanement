@@ -27,6 +27,52 @@
     </div>
   </section>
 
+  <!-- ⭐ Section Dossiers Douane (transitaire) -->
+  <section class="table-section" *ngIf="currentUser?.role === 'transitaire' && dossiersDouane.length > 0">
+    <div class="table-header">
+      <h2>📂 Mes dossiers de dédouanement</h2>
+    </div>
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Référence</th>
+            <th>Déclaration</th>
+            <th>Statut</th>
+            <th>Circuit</th>
+            <th>Taxes</th>
+            <th>BAE</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let dossier of dossiersDouane">
+            <td><strong>{{ dossier.reference }}</strong></td>
+            <td>{{ dossier.declaration_reference || 'DEC-' + dossier.declaration_id }}</td>
+            <td>
+              <span class="badge badge-{{ dossier.statut === 'DOCUMENTS_ATTENDUS' || dossier.statut === 'EN_ATTENTE_VALIDATION' || dossier.statut === 'EN_ATTENTE_PAIEMENT' ? 'warning' : dossier.statut === 'VALIDE' || dossier.statut === 'PAYE' || dossier.statut === 'BAE_GENERE' ? 'success' : dossier.statut === 'REJETE' ? 'danger' : 'info' }}">
+                {{ dossier.statut }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="dossier.circuit" [ngClass]="{
+                'text-success': dossier.circuit === 'VERT',
+                'text-warning': dossier.circuit === 'JAUNE',
+                'text-danger': dossier.circuit === 'ROUGE'
+              }">{{ dossier.circuit }}</span>
+              <span *ngIf="!dossier.circuit" class="text-muted">—</span>
+            </td>
+            <td>{{ dossier.montant_taxes > 0 ? (dossier.montant_taxes + ' FCFA') : '—' }}</td>
+            <td>{{ dossier.bae_reference || '—' }}</td>
+            <td>
+              <button class="btn-action" (click)="voirDetails(dossier)">👁️ Détails</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="table-section">
     <div class="table-header">
       <h2>{{ dashboardTitle }}</h2>
@@ -82,20 +128,62 @@
             </td>
             <td>
               <span [ngClass]="{
-                'text-assigned': item.transitaire_id,
-                'text-unassigned': !item.transitaire_id
+                'text-assigned': item.transitaire_id || getOffreCount(item) > 0,
+                'text-unassigned': !item.transitaire_id && getOffreCount(item) === 0
               }">
-                {{ item.transitaire_id ? ('Transitaire #' + item.transitaire_id) : 'Non assigné' }}
+                {{ getTransitaireLabel(item) }}
+                <span *ngIf="getOffreCount(item) > 0 && !item.transitaire_id" class="badge badge-info">
+                  {{ getOffreCount(item) }} offre(s)
+                </span>
               </span>
             </td>
             
             <td>
-              <button 
-                *ngIf="currentUser?.role === 'transitaire' && normalizeStatus(item.statut) === 'en_attente_offres'" 
-                class="btn-offer" 
-                title="Répondre à l'offre" 
+              <!-- Transitaire : a déjà soumis une offre → Validé -->
+              <span
+                *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut) && aDejaSoumisOffre(item)"
+                class="badge badge-success"
+                style="padding: 6px 12px; font-size: 0.85rem;">
+                ✅ Validé
+              </span>
+
+              <!-- Transitaire : n'a pas encore soumis → Répondre à l'offre -->
+              <button
+                *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut) && !aDejaSoumisOffre(item)"
+                class="btn-offer"
+                title="Répondre à l'offre"
                 (click)="faireOffre(item)">
                 💼 Répondre à l'offre
+              </button>
+
+              <!-- Transitaire : Voir le détail de la déclaration -->
+              <button
+                *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut)"
+                class="btn-action"
+                title="Voir le détail de la déclaration"
+                (click)="voirDetails(item)"
+                style="margin-left: 4px;">
+                👁️ Voir
+              </button>
+
+              <!-- Transitaire : Chat avec le déclarant si offre soumise -->
+              <button
+                *ngIf="currentUser?.role === 'transitaire' && aDejaSoumisOffre(item)"
+                class="btn-chat"
+                title="Discuter avec le déclarant"
+                (click)="ouvrirChat(item)"
+                style="margin-left: 4px;">
+                💬 Chat
+              </button>
+
+              <!-- Déclarant : Chat avec le transitaire si une offre existe -->
+              <button
+                *ngIf="currentUser?.role === 'declarant' && getOffreCount(item) > 0"
+                class="btn-chat"
+                title="Discuter avec un transitaire"
+                (click)="ouvrirChat(item)"
+                style="margin-left: 4px;">
+                💬 Chat
               </button>
 
 
@@ -162,7 +250,7 @@
           <select id="code_sh" formControlName="code_sh" class="form-control">
             <option value="" selected disabled>-- Choisir une désignation --</option>
             <option *ngFor="let item of nomenclatures" [value]="item.code_sh">
-              {{ item.designation }}
+              Code: {{ item.code_sh }} | Taux: {{ item.taux_droit_douane }}%
             </option>
           </select>
           <div *ngIf="nomenclatureLoading" class="error-msg" style="margin-top: 6px;">Chargement...</div>
@@ -202,67 +290,78 @@
       </form>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay" *ngIf="showOfferModal">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h2>Répondre à l'offre - {{ selectedOfferDeclarationRef }}</h2>
-      <button class="close-btn" (click)="closeOfferModal()">&times;</button>
+  <!-- Modal pour répondre à l'offre (transitaire) -->
+  <div class="modal-overlay" *ngIf="showOfferModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>💼 Répondre à l'offre</h2>
+        <button class="close-btn" (click)="closeOfferModal()">&times;</button>
+      </div>
+
+      <p class="modal-subtitle">
+        Déclaration : <strong>{{ selectedOfferDeclarationRef }}</strong>
+      </p>
+
+      <form [formGroup]="offerForm" (ngSubmit)="soumettreOffre()" class="modal-form">
+        <div class="form-group">
+          <label for="mode_transport">Mode de transport :</label>
+          <select id="mode_transport" formControlName="mode_transport" class="form-control" required>
+            <option value="" disabled selected>-- Sélectionner --</option>
+            <option value="maritime">Maritime</option>
+            <option value="aerien">Aérien</option>
+            <option value="terrestre">Terrestre</option>
+            <option value="ferroviaire">Ferroviaire</option>
+            <option value="multimodal">Multimodal</option>
+          </select>
+          <div *ngIf="offerForm.get('mode_transport')?.invalid && offerForm.get('mode_transport')?.touched" class="error-msg">
+            Le mode de transport est requis.
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="montant_prestation">Montant prestation (FCFA) :</label>
+            <input type="number" id="montant_prestation" formControlName="montant_prestation" class="form-control" placeholder="Ex: 500000" min="1"/>
+            <div *ngIf="offerForm.get('montant_prestation')?.invalid && offerForm.get('montant_prestation')?.touched" class="error-msg">
+              Montant valide requis.
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="delai_estime_jours">Délai estimé (jours) :</label>
+            <input type="number" id="delai_estime_jours" formControlName="delai_estime_jours" class="form-control" placeholder="Ex: 7" min="1"/>
+            <div *ngIf="offerForm.get('delai_estime_jours')?.invalid && offerForm.get('delai_estime_jours')?.touched" class="error-msg">
+              Délai valide requis.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message optionnel :</label>
+          <textarea id="message" formControlName="message" class="form-control" rows="3" placeholder="Ajoutez un message au déclarant..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeOfferModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="offerForm.invalid">📤 Envoyer l'offre</button>
+        </div>
+      </form>
     </div>
-
-    <form [formGroup]="offerForm" (ngSubmit)="soumettreOffre()" class="modal-form">
-      <div class="form-group">
-        <label for="mode_transport">Mode de déplacement :</label>
-        <select id="mode_transport" formControlName="mode_transport" class="form-control">
-          <option value="">-- Sélectionner un mode --</option>
-          <option value="Conteneur">Conteneur</option>
-          <option value="Avion">Avion</option>
-          <option value="Camion">Camion</option>
-          <option value="Train">Train</option>
-          <option value="Multimodal">Multimodal</option>
-        </select>
-        <div *ngIf="offerForm.get('mode_transport')?.invalid && offerForm.get('mode_transport')?.touched" class="error-msg">
-          Le mode de déplacement est requis.
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="montant_prestation">Montant de la prestation :</label>
-          <input type="number" id="montant_prestation" formControlName="montant_prestation" class="form-control" placeholder="Ex: 1500"/>
-        </div>
-        <div class="form-group">
-          <label for="delai_estime_jours">Délai estimé (jours) :</label>
-          <input type="number" id="delai_estime_jours" formControlName="delai_estime_jours" class="form-control" placeholder="Ex: 10"/>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="message">Message (optionnel) :</label>
-        <textarea id="message" formControlName="message" class="form-control" rows="3" placeholder="Détails ou remarques supplémentaires..."></textarea>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" (click)="closeOfferModal()">Annuler</button>
-        <button type="submit" class="btn btn-primary" [disabled]="offerForm.invalid">Envoyer l'offre</button>
-      </div>
-    </form>
   </div>
-</div>
 
-<!-- Panneau de Chat -->
-<div class="chat-overlay" *ngIf="showChatPanel" (click)="fermerChat()">
-  <div class="chat-panel" (click)="$event.stopPropagation()">
-    <div class="chat-header">
-      <h3>💬 Chat - {{ selectedDeclarationRef }}</h3>
-      <button class="close-chat" (click)="fermerChat()">&times;</button>
-    </div>
-    <div class="chat-content">
-      <app-chat 
-        [declarationId]="selectedDeclarationId"
-        [declarationReference]="selectedDeclarationRef">
-      </app-chat>
+  <!-- Panneau Chat -->
+  <div class="chat-overlay" *ngIf="showChatPanel">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <h3>💬 Discussion - {{ selectedDeclarationRef }}</h3>
+        <button class="close-chat" (click)="fermerChat()">&times;</button>
+      </div>
+      <div class="chat-content">
+        <app-chat
+          [declarationId]="selectedDeclarationId"
+          [declarationReference]="selectedDeclarationRef">
+        </app-chat>
+      </div>
     </div>
   </div>
 </div>

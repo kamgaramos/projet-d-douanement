@@ -1,3 +1,9 @@
+/**
+ * INDEX DES MODÈLES
+ *
+ * Initialise toutes les tables de la base de données
+ * dans l'ordre correct (respect des clés étrangères).
+ */
 const db = require('../config/db');
 const User = require('./User');
 const Declaration = require('./Declaration');
@@ -6,53 +12,85 @@ const Offre = require('./Offre');
 const Document = require('./Document');
 const Message = require('./Message');
 const Notification = require('./Notification');
+const DossierDouane = require('./DossierDouane');
+const ActionDouane = require('./ActionDouane');
+const Taxe = require('./Taxe');
 
 const initModels = async () => {
   try {
     const query = db.query || db;
-    
-    // 1. Création des tables
-    await User.createTable();
-    await Declaration.createTable();
-    await Marchandise.createTable();
-    await Offre.createTable();
-    await Document.createTable();
-    await Message.createTable();
-    await Notification.createTable();
 
-    // 2. MISE À JOUR : Ajout des colonnes manquantes
+    console.log('[MODELS] Création des tables...');
+
+    // 1. Tables racines (sans FK)
+    await User.createTable();
+    console.log('  ✓ users');
+    await Declaration.createTable();
+    console.log('  ✓ declarations');
+
+    // 2. Tables dépendantes (FK vers users / declarations)
+    await Marchandise.createTable();
+    console.log('  ✓ marchandises');
+    await Offre.createTable();
+    console.log('  ✓ offres');
+    await Document.createTable();
+    console.log('  ✓ documents');
+    await Message.createTable();
+    console.log('  ✓ messages');
+    await Notification.createTable();
+    console.log('  ✓ notifications');
+
+    // 3. NOUVELLES TABLES (workflow douane)
+    await DossierDouane.createTable();
+    console.log('  ✓ dossiers_douane');
+    await ActionDouane.createTable();
+    console.log('  ✓ actions_douane');
+    await Taxe.createTable();
+    console.log('  ✓ taxes');
+
+    // 4. Mise à jour des colonnes existantes
     await query(`
-      ALTER TABLE declarations 
+      ALTER TABLE declarations
       ADD COLUMN IF NOT EXISTS transitaire_id INT REFERENCES users(id) ON DELETE SET NULL,
       ADD COLUMN IF NOT EXISTS port_depart VARCHAR(255),
       ADD COLUMN IF NOT EXISTS port_arrivee VARCHAR(255),
       ADD COLUMN IF NOT EXISTS date_embarquement TIMESTAMP;
-    ALTER TABLE offres 
-      ADD COLUMN IF NOT EXISTS mode_transport VARCHAR(50);
     `);
-    console.log('✓ Colonnes transitaire_id, port_depart, port_arrivee et date_embarquement vérifiées ou ajoutées avec succès.');
-    
-    // 3. Insertion utilisateur de test
+
+    // Ajouter les colonnes version aux offres si absentes
     await query(`
-      INSERT INTO users (id, username, email, password, role) 
-      VALUES (1, 'Kamga', 'kamga@test.com', '$2b$10$hashedpasswordhere', 'declarant')
-      ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE offres
+        ADD COLUMN IF NOT EXISTS version INT DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS rejected_by INT REFERENCES users(id),
+        ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
     `);
-    
-    console.log('✓ Modèles vérifiés/initialisés avec succès.');
+    console.log('  ✓ colonnes supplémentaires (version, accepted_at, etc.)');
+
+    // Ajouter le champ dossier_id aux documents si absent
+    await query(`
+      ALTER TABLE documents
+      ADD COLUMN IF NOT EXISTS dossier_id INT REFERENCES dossiers_douane(id) ON DELETE SET NULL;
+    `);
+    console.log('  ✓ colonne dossier_id dans documents');
+
+    console.log('[MODELS] ✓ Toutes les tables sont prêtes.\n');
   } catch (error) {
-    console.error('❌ Erreur lors de l\'initialisation des tables SQL:', error.message);
+    console.error('[MODELS] ❌ Erreur lors de l\'initialisation des tables:', error.message);
     throw error;
   }
 };
 
-module.exports = { 
-  initModels, 
-  User, 
-  Declaration, 
+module.exports = {
+  initModels,
+  User,
+  Declaration,
   Marchandise,
   Offre,
   Document,
   Message,
-  Notification
+  Notification,
+  DossierDouane,
+  ActionDouane,
+  Taxe,
 };

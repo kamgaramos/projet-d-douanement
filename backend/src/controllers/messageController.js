@@ -1,9 +1,18 @@
 const Message = require('../models/Message');
 const Declaration = require('../models/Declaration');
 const { creerNotification, NOTIFICATION_TYPES } = require('../utils/notificationHelper');
+const db = require('../config/db');
+
+/** Vérifie si un utilisateur a soumis une offre (PENDING) pour cette déclaration */
+const aSoumisOffre = async (declaration_id, user_id) => {
+  const result = await db.query(
+    `SELECT id FROM offres WHERE declaration_id = $1 AND transitaire_id = $2 AND statut = 'PENDING'`,
+    [declaration_id, user_id]
+  );
+  return result.rows.length > 0;
+};
 
 const envoyerMessage = async (req, res) => {
-    // ... ton code envoyerMessage reste inchangé
     try {
         const { declaration_id, content } = req.body;
         const sender_id = req.user.id;
@@ -13,7 +22,14 @@ const envoyerMessage = async (req, res) => {
         if (declarationResult.rows.length === 0) return res.status(404).json({ error: 'Déclaration non trouvée' });
         const declaration = declarationResult.rows[0];
 
-        const canSendMessage = (sender_role === 'admin' || sender_role === 'douanier' || declaration.declarant_id === sender_id || declaration.transitaire_id === sender_id);
+        const aOffre = await aSoumisOffre(declaration_id, sender_id);
+        const canSendMessage = (
+          sender_role === 'admin' ||
+          sender_role === 'douanier' ||
+          declaration.declarant_id === sender_id ||
+          declaration.transitaire_id === sender_id ||
+          aOffre
+        );
         if (!canSendMessage) return res.status(403).json({ error: 'Accès refusé' });
 
         const messageResult = await Message.create({ declaration_id: parseInt(declaration_id), sender_id, content: content.trim() });
@@ -34,21 +50,69 @@ const envoyerMessage = async (req, res) => {
         };
 
         res.status(201).json({ message: 'Message envoyé', message_data });
+
+        // Notification asynchrone à l'autre participant
+        try {
+          const senderIsDeclarant = declaration.declarant_id === sender_id;
+
+          if (senderIsDeclarant) {
+            // Le déclarant écrit → notifier le(s) transitaire(s)
+            const transitaireCible = declaration.transitaire_id;
+            if (transitaireCible) {
+              creerNotification(
+                transitaireCible, parseInt(declaration_id),
+                NOTIFICATION_TYPES.MESSAGE_RECU,
+                `Nouveau message reçu de ${req.user.username || 'le déclarant'}`,
+                { message_id: row.id, sender_id }
+              );
+            } else {
+              // Pas de transitaire assigné → notifier tous ceux qui ont une offre PENDING
+              const offreurs = await db.query(
+                `SELECT DISTINCT transitaire_id FROM offres WHERE declaration_id = $1 AND statut = 'PENDING'`,
+                [parseInt(declaration_id)]
+              );
+              offreurs.rows.forEach(o => {
+                creerNotification(
+                  o.transitaire_id, parseInt(declaration_id),
+                  NOTIFICATION_TYPES.MESSAGE_RECU,
+                  `Nouveau message reçu de ${req.user.username || 'le déclarant'}`,
+                  { message_id: row.id, sender_id }
+                ).catch(e => console.error('Erreur notif offreur:', e));
+              });
+            }
+          } else {
+            // Le transitaire écrit → notifier le déclarant
+            creerNotification(
+              declaration.declarant_id, parseInt(declaration_id),
+              NOTIFICATION_TYPES.MESSAGE_RECU,
+              `Nouveau message reçu de ${req.user.username || 'un transitaire'}`,
+              { message_id: row.id, sender_id }
+            );
+          }
+        } catch (notifErr) {
+          console.error('Erreur notification message:', notifErr);
+        }
     } catch (error) {
         res.status(500).json({ error: 'Erreur serveur', details: error.message });
     }
 };
 
 const obtenirHistoriqueMessages = async (req, res) => {
-    // ... ton code obtenirHistoriqueMessages reste inchangé
     try {
         const { declaration_id } = req.params;
         const user_id = req.user.id;
         const declarationResult = await Declaration.findById(declaration_id);
         if (declarationResult.rows.length === 0) return res.status(404).json({ error: 'Déclaration non trouvée' });
         const declaration = declarationResult.rows[0];
-        
-        const canView = (req.user.role === 'admin' || req.user.role === 'douanier' || declaration.declarant_id === user_id || declaration.transitaire_id === user_id);
+
+        const aOffre = await aSoumisOffre(declaration_id, user_id);
+        const canView = (
+          req.user.role === 'admin' ||
+          req.user.role === 'douanier' ||
+          declaration.declarant_id === user_id ||
+          declaration.transitaire_id === user_id ||
+          aOffre
+        );
         if (!canView) return res.status(403).json({ error: 'Accès refusé' });
 
         const messagesResult = await Message.findByDeclaration(declaration_id);

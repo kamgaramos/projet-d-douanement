@@ -2,6 +2,16 @@ const Document = require('../models/Document');
 const Declaration = require('../models/Declaration');
 const path = require('path');
 const fs = require('fs');
+const db = require('../config/db');
+
+/** Vérifie si un utilisateur a une offre acceptée pour cette déclaration */
+const aOffreAcceptee = async (declaration_id, user_id) => {
+  const result = await db.query(
+    `SELECT id FROM offres WHERE declaration_id = $1 AND transitaire_id = $2 AND statut = 'ACCEPTED'`,
+    [declaration_id, user_id]
+  );
+  return result.rows.length > 0;
+};
 
 const uploadDocuments = async (req, res) => {
   try {
@@ -35,13 +45,20 @@ const uploadDocuments = async (req, res) => {
 
     const declaration = declarationResult.rows[0];
 
+    console.log(`[UPLOAD] User #${user_id} (${user_role}) tente d'uploader pour déclaration #${declaration_id}`);
+    console.log(`[UPLOAD] Déclaration: declarant_id=${declaration.declarant_id}, transitaire_id=${declaration.transitaire_id}`);
+
     // Vérifier les permissions d'upload
+    const offreAcceptee = await aOffreAcceptee(declaration_id, user_id);
     const canUpload = (
       user_role === 'admin' ||
       user_role === 'douanier' ||
       declaration.declarant_id === user_id ||
-      declaration.transitaire_id === user_id
+      declaration.transitaire_id === user_id ||
+      offreAcceptee
     );
+
+    console.log(`[UPLOAD] canUpload=${canUpload} (offreAcceptee=${offreAcceptee})`);
 
     if (!canUpload) {
       // Supprimer les fichiers uploadés si pas d'autorisation
@@ -158,11 +175,13 @@ const listerDocuments = async (req, res) => {
     const declaration = declarationResult.rows[0];
 
     // Vérifier les permissions de lecture
+    const offreAcceptee = await aOffreAcceptee(declaration_id, user_id);
     const canView = (
       user_role === 'admin' ||
       user_role === 'douanier' ||
       declaration.declarant_id === user_id ||
-      declaration.transitaire_id === user_id
+      declaration.transitaire_id === user_id ||
+      offreAcceptee
     );
 
     if (!canView) {

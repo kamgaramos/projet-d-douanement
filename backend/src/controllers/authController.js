@@ -27,8 +27,12 @@ const login = async (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: 'Email et mot de passe requis' });
 
+  // Normalisation temporaire pour debug (et éviter les espaces/casse)
+  const normalizedEmail = String(email).trim().toLowerCase();
+
   try {
-    const { rows } = await User.findByEmail(email);
+    console.log("Email normalisé :", normalizedEmail);
+    const { rows } = await User.findByEmail(normalizedEmail);
     const user = rows[0];
 
     // --- DÉBUT LOGS DE DÉBOGAGE ---

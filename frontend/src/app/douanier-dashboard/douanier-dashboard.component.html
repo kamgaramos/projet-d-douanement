@@ -8,14 +8,6 @@
       <span>Connecté en tant que <strong>{{ currentUser?.name || 'Douanier' }}</strong> 
         <small class="role-badge douanier">{{ currentUser?.role }}</small>
       </span>
-      
-      <!-- BOUTON CHAT MEGA VISIBLE -->
-      <button 
-        (click)="ouvrirChat({id: 1, reference: 'TEST-DIRECT'})"
-        style="background: #ff0000; color: white; padding: 1rem 2rem; margin: 0 1rem; border: 3px solid yellow; border-radius: 8px; font-size: 1.2rem; font-weight: bold; cursor: pointer; animation: blink 1s infinite;">
-        🚨 CHAT TEST 🚨
-      </button>
-      
       <button class="btn btn-danger" (click)="onLogout()">Déconnexion</button>
     </div>
   </header>
@@ -62,7 +54,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let declaration of declarationsEnAttente" class="declaration-row" [class.unread-declaration]="hasUnreadNotification(declaration.id)">
+          <tr *ngFor="let declaration of declarationsEnAttente" class="declaration-row">
             <td>
               <strong class="reference-code">{{ declaration.reference || ('DEC-' + declaration.id) }}</strong>
             </td>
@@ -93,24 +85,24 @@
             
             <td class="actions-cell">
               <div class="validation-buttons">
-                <!-- BOUTON CHAT FORCE -->
-                <button 
-                  class="btn-chat-force" 
-                  title="CHAT TEST" 
-                  (click)="ouvrirChat(declaration)"
-                  style="background: #ff0000; color: white; padding: 8px; margin-right: 8px; border: none; border-radius: 4px; cursor: pointer;">
-                  💬 CHAT
+                <!-- VOIR LES DOCUMENTS -->
+                <button
+                  class="btn-documents"
+                  title="Voir les documents"
+                  (click)="voirDocuments(declaration.id)"
+                  style="background: #3b82f6; color: white; padding: 8px; margin-right: 8px; border: none; border-radius: 4px; cursor: pointer;">
+                  📄 Documents
                 </button>
-                
-                <button 
-                  class="btn-validation approve" 
-                  title="Approuver cette déclaration" 
+
+                <button
+                  class="btn-validation approve"
+                  title="Approuver cette déclaration"
                   (click)="valider(declaration.id, 'approuvée')">
                   ✅ Approuver
                 </button>
-                <button 
-                  class="btn-validation reject" 
-                  title="Rejeter cette déclaration" 
+                <button
+                  class="btn-validation reject"
+                  title="Rejeter cette déclaration"
                   (click)="valider(declaration.id, 'rejetée')">
                   ❌ Rejeter
                 </button>
@@ -128,20 +120,4 @@
       </table>
     </div>
   </section>
-</div>
-
-<!-- Panneau de Chat pour Douanier -->
-<div class="chat-overlay" *ngIf="showChatPanel" (click)="fermerChat()">
-  <div class="chat-panel" (click)="$event.stopPropagation()">
-    <div class="chat-header">
-      <h3>💬 Chat Douanier - {{ selectedDeclarationRef }}</h3>
-      <button class="close-chat" (click)="fermerChat()">&times;</button>
-    </div>
-    <div class="chat-content">
-      <app-chat 
-        [declarationId]="selectedDeclarationId"
-        [declarationReference]="selectedDeclarationRef">
-      </app-chat>
-    </div>
-  </div>
 </div>

@@ -170,6 +170,28 @@
 }
 .btn-action:hover { background: #e2e8f0; }
 
+/* --- BOUTON OFFRE (TRANSITAIRE) --- */
+.btn-offer {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+.btn-offer:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* --- TEXTES ASSIGNÉ / NON ASSIGNÉ --- */
+.text-assigned { color: #065f46; font-weight: 600; }
+.text-unassigned { color: #94a3b8; font-style: italic; }
+
 /* --- ACTIONS DOUANIER --- */
 .douane-actions-group {
   display: inline-flex;
@@ -303,6 +325,8 @@
 .badge-warning { background-color: #ffedd5; color: #ea580c; }
 .badge-success { background-color: #d1fae5; color: #065f46; }
 .badge-danger { background-color: #fee2e2; color: #991b1b; }
+.badge-info { background-color: #dbeafe; color: #1d4ed8; }
+.badge-secondary { background-color: #e2e8f0; color: #475569; }
 
 /* --- MODAL FORMULAIRE --- */
 .modal-overlay {
@@ -321,4 +345,10 @@
   border-radius: 16px;
   width: 500px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-subtitle {
+  color: #64748b;
+  margin: 0.5rem 0 1.5rem 0;
+  font-size: 0.95rem;
 }

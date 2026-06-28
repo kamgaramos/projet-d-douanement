@@ -275,18 +275,210 @@
   .declaration-details-container {
     padding: 1rem;
   }
-  
+
   .declaration-header {
     flex-direction: column;
     gap: 1rem;
     text-align: center;
   }
-  
+
   .info-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .actions-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* === SECTION DOCUMENTS === */
+.doc-actions-bar {
+  margin-bottom: 1rem;
+}
+
+.btn-upload {
+  padding: 0.6rem 1.2rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btn-upload:hover {
+  background: #2563eb;
+}
+
+.upload-success {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.upload-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.upload-form {
+  background: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  border: 2px dashed #cbd5e1;
+}
+
+.upload-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.upload-form label {
+  display: block;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.upload-form .form-control {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.btn-upload-submit {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.file-preview-list {
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.file-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.file-icon {
+  font-size: 1.2rem;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  min-width: 60px;
+  text-align: right;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.file-remove:hover {
+  background: #fee2e2;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.doc-item:hover {
+  background: #f1f5f9;
+}
+
+.doc-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.doc-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-name {
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-name:hover {
+  text-decoration: underline;
+}
+
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.doc-meta .doc-type {
+  background: #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #475569;
+}
+
+.text-muted {
+  color: #94a3b8;
+  text-align: center;
+  padding: 1rem;
 }
