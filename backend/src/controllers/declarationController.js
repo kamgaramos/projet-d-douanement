@@ -8,7 +8,11 @@ const listerDeclarations = async (req, res) => {
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    const result = await db.query('SELECT * FROM declarations ORDER BY id DESC');
+    const result = await db.query(`SELECT d.*,
+      m.description, m.type_marchandise, m.poids, m.valeur, m.code_sh
+    FROM declarations d
+    LEFT JOIN marchandises m ON m.declaration_id = d.id
+    ORDER BY d.id DESC`);
     const declarations = result.rows;
 
     // Enrichir chaque déclaration avec les infos d'offres
