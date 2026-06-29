@@ -33,6 +33,10 @@ export class DashboardComponent implements OnInit {
   showOfferDetailsModal: boolean = false;
   selectedOfferDetails: any = null;
 
+  // Propriétés pour voir le détail de la cargaison (transitaire avant offre)
+  showCargoModal: boolean = false;
+  selectedCargo: any = null;
+
   // Dossiers douane pour le transitaire
   dossiersDouane: any[] = [];
   
@@ -140,6 +144,18 @@ export class DashboardComponent implements OnInit {
   closeOfferDetailsModal(): void {
     this.showOfferDetailsModal = false;
     this.selectedOfferDetails = null;
+  }
+
+  /** Affiche le détail de la cargaison (transitaire avant soumission d'offre) */
+  voirCargaison(declaration: any): void {
+    this.selectedCargo = declaration;
+    this.selectedOfferDeclarationRef = declaration.reference || ('DEC-' + declaration.id);
+    this.showCargoModal = true;
+  }
+
+  closeCargoModal(): void {
+    this.showCargoModal = false;
+    this.selectedCargo = null;
   }
 
   soumettreOffre(): void {

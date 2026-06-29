@@ -139,6 +139,16 @@
             </td>
             
             <td>
+              <!-- Transitaire : Voir le détail de la cargaison (avant de faire une offre) -->
+              <button
+                *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut)"
+                class="btn-action"
+                title="Voir le contenu de la cargaison"
+                (click)="voirCargaison(item)"
+                style="margin-right: 4px;">
+                📦 Charge
+              </button>
+
               <!-- Transitaire : a déjà soumis une offre → Validé -->
               <span
                 *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut) && aDejaSoumisOffre(item)"
@@ -356,6 +366,62 @@
           <button type="submit" class="btn btn-primary" [disabled]="offerForm.invalid">📤 Envoyer l'offre</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal : Détail de la cargaison (transitaire avant offre) -->
+  <div class="modal-overlay" *ngIf="showCargoModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>📦 Contenu de la cargaison</h2>
+        <button class="close-btn" (click)="closeCargoModal()">&times;</button>
+      </div>
+
+      <p class="modal-subtitle">
+        Déclaration : <strong>{{ selectedOfferDeclarationRef }}</strong>
+      </p>
+
+      <div class="offer-details" *ngIf="selectedCargo">
+        <div class="detail-row">
+          <span class="detail-label">📝 Description :</span>
+          <span class="detail-value">{{ selectedCargo.description || 'Non renseignée' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">🏷️ Type marchandise :</span>
+          <span class="detail-value">{{ selectedCargo.type_marchandise || selectedCargo.typeMarchandise || 'Général' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">⚖️ Poids :</span>
+          <span class="detail-value">{{ selectedCargo.poids ?? selectedCargo.poids_kg ?? '-' }} kg</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">💵 Valeur :</span>
+          <span class="detail-value montant">{{ selectedCargo.valeur ?? selectedCargo.valeur_usd ?? '-' }} USD</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedCargo.port_depart">
+          <span class="detail-label">🚢 Port départ :</span>
+          <span class="detail-value">{{ selectedCargo.port_depart }}</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedCargo.port_arrivee">
+          <span class="detail-label">🏖️ Port arrivée :</span>
+          <span class="detail-value">{{ selectedCargo.port_arrivee }}</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedCargo.montant_droits_douane">
+          <span class="detail-label">💰 Droits de douane :</span>
+          <span class="detail-value montant">{{ selectedCargo.montant_droits_douane }} €</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedCargo.date_embarquement">
+          <span class="detail-label">📅 Date embarquement :</span>
+          <span class="detail-value">{{ selectedCargo.date_embarquement | date:'dd/MM/yyyy' }}</span>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" (click)="closeCargoModal()">Fermer</button>
+        <button type="button" class="btn btn-primary" (click)="closeCargoModal(); faireOffre(selectedCargo)">
+          💼 Répondre à l'offre
+        </button>
+      </div>
     </div>
   </div>
 
