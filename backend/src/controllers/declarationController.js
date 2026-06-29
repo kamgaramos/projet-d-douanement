@@ -13,8 +13,8 @@ const listerDeclarations = async (req, res) => {
 
     // Enrichir chaque déclaration avec les infos d'offres
     const enriched = await Promise.all(declarations.map(async (dec) => {
-      // Compter les offres et récupérer les noms des transitaires
-      const offresResult = await db.query(`
+      // Compter les offres PENDING (offres actives en attente)
+      const offresPendingResult = await db.query(`
         SELECT o.id, o.transitaire_id, u.username
         FROM offres o
         LEFT JOIN users u ON o.transitaire_id = u.id
@@ -22,19 +22,32 @@ const listerDeclarations = async (req, res) => {
         ORDER BY o.created_at DESC
       `, [dec.id]);
 
-      const offreCount = offresResult.rows.length;
-      const transitairesOffreurs = offresResult.rows.map(r => r.username).filter(Boolean);
+      const offreCount = offresPendingResult.rows.length;
+      const transitairesOffreurs = offresPendingResult.rows.map(r => r.username).filter(Boolean);
 
+      // Pour le transitaire connecté : récupérer SON offre (quel que soit son statut)
       let monOffreId = null;
+      let monOffreDetails = null;
       if (userRole === 'transitaire') {
-        const myOffer = offresResult.rows.find(r => r.transitaire_id === userId);
-        monOffreId = myOffer ? myOffer.id : null;
+        const monOffreResult = await db.query(`
+          SELECT id, mode_transport, montant_prestation, delai_estime_jours, message, statut, created_at
+          FROM offres
+          WHERE declaration_id = $1 AND transitaire_id = $2
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [dec.id, userId]);
+
+        if (monOffreResult.rows.length > 0) {
+          monOffreId = monOffreResult.rows[0].id;
+          monOffreDetails = monOffreResult.rows[0];
+        }
       }
 
       return {
         ...dec,
         offre_count: offreCount,
         mon_offre_id: monOffreId,
+        mon_offre: monOffreDetails,
         transitaires_offreurs: transitairesOffreurs
       };
     }));

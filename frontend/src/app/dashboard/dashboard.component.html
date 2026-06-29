@@ -147,6 +147,16 @@
                 ✅ Validé
               </span>
 
+              <!-- Transitaire : voir le détail de son offre -->
+              <button
+                *ngIf="currentUser?.role === 'transitaire' && aDejaSoumisOffre(item) && item.mon_offre"
+                class="btn-action"
+                title="Voir le détail de mon offre"
+                (click)="voirMonOffre(item)"
+                style="margin-left: 4px;">
+                📝 Mon offre
+              </button>
+
               <!-- Transitaire : n'a pas encore soumis → Répondre à l'offre -->
               <button
                 *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut) && !aDejaSoumisOffre(item)"
@@ -156,9 +166,9 @@
                 💼 Répondre à l'offre
               </button>
 
-              <!-- Transitaire : Voir le détail de la déclaration -->
+              <!-- Transitaire : Voir le détail de la déclaration (offre ouverte ou dossier ouvert) -->
               <button
-                *ngIf="currentUser?.role === 'transitaire' && isOffresEnAttente(item.statut)"
+                *ngIf="currentUser?.role === 'transitaire' && (isOffresEnAttente(item.statut) || item.statut === 'DOSSIER_OUVERT')"
                 class="btn-action"
                 title="Voir le détail de la déclaration"
                 (click)="voirDetails(item)"
@@ -166,9 +176,9 @@
                 👁️ Voir
               </button>
 
-              <!-- Transitaire : Chat avec le déclarant si offre soumise -->
+              <!-- Transitaire : Chat avec le déclarant (offre soumise ou dossier ouvert) -->
               <button
-                *ngIf="currentUser?.role === 'transitaire' && aDejaSoumisOffre(item)"
+                *ngIf="currentUser?.role === 'transitaire' && (aDejaSoumisOffre(item) || item.statut === 'DOSSIER_OUVERT')"
                 class="btn-chat"
                 title="Discuter avec le déclarant"
                 (click)="ouvrirChat(item)"
@@ -346,6 +356,57 @@
           <button type="submit" class="btn btn-primary" [disabled]="offerForm.invalid">📤 Envoyer l'offre</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal : Détail de mon offre (transitaire) -->
+  <div class="modal-overlay" *ngIf="showOfferDetailsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>📝 Détail de mon offre</h2>
+        <button class="close-btn" (click)="closeOfferDetailsModal()">&times;</button>
+      </div>
+
+      <p class="modal-subtitle">
+        Déclaration : <strong>{{ selectedOfferDeclarationRef }}</strong>
+      </p>
+
+      <div class="offer-details" *ngIf="selectedOfferDetails">
+        <div class="detail-row">
+          <span class="detail-label">🚚 Mode de transport :</span>
+          <span class="detail-value">{{ selectedOfferDetails.mode_transport }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">💰 Montant prestation :</span>
+          <span class="detail-value montant">{{ selectedOfferDetails.montant_prestation }} FCFA</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">⏱️ Délai estimé :</span>
+          <span class="detail-value">{{ selectedOfferDetails.delai_estime_jours }} jours</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedOfferDetails.message">
+          <span class="detail-label">💬 Message :</span>
+          <span class="detail-value">{{ selectedOfferDetails.message }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">📋 Statut :</span>
+          <span class="detail-value">
+            <span class="badge" [ngClass]="{
+              'badge-warning': selectedOfferDetails.statut === 'PENDING',
+              'badge-success': selectedOfferDetails.statut === 'ACCEPTED',
+              'badge-danger': selectedOfferDetails.statut === 'REJECTED'
+            }">{{ selectedOfferDetails.statut }}</span>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">📅 Date de soumission :</span>
+          <span class="detail-value">{{ selectedOfferDetails.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" (click)="closeOfferDetailsModal()">Fermer</button>
+      </div>
     </div>
   </div>
 

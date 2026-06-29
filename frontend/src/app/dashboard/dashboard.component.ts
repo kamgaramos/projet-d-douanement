@@ -29,6 +29,10 @@ export class DashboardComponent implements OnInit {
   selectedDeclarationRef: string = '';
   showChatPanel: boolean = false;
 
+  // Propriétés pour voir le détail de l'offre (transitaire)
+  showOfferDetailsModal: boolean = false;
+  selectedOfferDetails: any = null;
+
   // Dossiers douane pour le transitaire
   dossiersDouane: any[] = [];
   
@@ -123,6 +127,20 @@ export class DashboardComponent implements OnInit {
   closeOfferModal(): void { this.showOfferModal = false; this.offerForm.reset(); }
 
   faireOffre(declaration: any) { this.openOfferModal(declaration); }
+
+  /** Affiche les détails de l'offre soumise par le transitaire */
+  voirMonOffre(declaration: any): void {
+    if (declaration.mon_offre) {
+      this.selectedOfferDetails = declaration.mon_offre;
+      this.selectedOfferDeclarationRef = declaration.reference || ('DEC-' + declaration.id);
+      this.showOfferDetailsModal = true;
+    }
+  }
+
+  closeOfferDetailsModal(): void {
+    this.showOfferDetailsModal = false;
+    this.selectedOfferDetails = null;
+  }
 
   soumettreOffre(): void {
     if (!this.selectedOfferDeclaration || this.offerForm.invalid) return;

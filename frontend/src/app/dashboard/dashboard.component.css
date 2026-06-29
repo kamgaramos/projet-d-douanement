@@ -352,3 +352,36 @@
   margin: 0.5rem 0 1.5rem 0;
   font-size: 0.95rem;
 }
+
+/* --- DÉTAIL DE L'OFFRE (MODAL TRANSITAIRE) --- */
+.offer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  color: #0f172a;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.detail-value.montant {
+  color: #059669;
+  font-weight: 700;
+}
