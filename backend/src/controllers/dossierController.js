@@ -20,6 +20,7 @@ const Document = require('../models/Document');
 const Offre = require('../models/Offre');
 const { creerNotification, NOTIFICATION_TYPES } = require('../utils/notificationHelper');
 const { withRetry, logError } = require('../utils/retryHelper');
+const { liquiderDossier } = require('../utils/liquidationHelper');
 
 // ─── Types de documents requis pour la soumission ───────────────────────────
 
@@ -60,8 +61,8 @@ function choisirCircuit() {
  * Format : BAE-YYYYMMDD-XXXXX
  */
 function genererReferenceBAE() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.random().toString(36).substr(2, 5).toUpperCase();
+  const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  const random = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `BAE-${date}-${random}`;
 }
 
@@ -161,6 +162,10 @@ const soumettreDeclaration = async (req, res) => {
     // ── 7. Transition selon le circuit ────────────────────────────────────
     let statutApresCircuit;
     let messageNotification;
+    let dossierVert;
+    let dossierValide;
+    let dossierJaune;
+    let dossierRouge;
 
     switch (circuit) {
       case DossierDouane.CIRCUITS.VERT:
@@ -175,7 +180,7 @@ const soumettreDeclaration = async (req, res) => {
         );
 
         // Récupérer la version mise à jour
-        const dossierVert = (await DossierDouane.findById(dossier.id)).rows[0];
+        dossierVert = (await DossierDouane.findById(dossier.id)).rows[0];
 
         // VALIDE
         await DossierDouane.transitionStatut(
@@ -184,11 +189,36 @@ const soumettreDeclaration = async (req, res) => {
         );
 
         // EN_LIQUIDATION automatique
-        const dossierValide = (await DossierDouane.findById(dossier.id)).rows[0];
+        dossierValide = (await DossierDouane.findById(dossier.id)).rows[0];
         await DossierDouane.transitionStatut(
           dossier.id, DossierDouane.STATUTS.EN_LIQUIDATION, dossierValide.version,
           { circuit }
         );
+
+        try {
+          const liquidationResult = await liquiderDossier(
+            dossier.id,
+            dossier.declaration_id,
+            userId
+          );
+
+          const dossierLiquide = (await DossierDouane.findById(dossier.id)).rows[0];
+          await DossierDouane.transitionStatut(
+            dossier.id,
+            DossierDouane.STATUTS.EN_ATTENTE_PAIEMENT,
+            dossierLiquide.version,
+            { montant_taxes: liquidationResult.total_taxes }
+          );
+
+          statutApresCircuit = DossierDouane.STATUTS.EN_ATTENTE_PAIEMENT;
+          messageNotification = `Circuit VERT assigné : taxes calculées automatiquement (${liquidationResult.total_taxes} FCFA). En attente de paiement.`;
+        } catch (liqErr) {
+          console.error('[dossierController] Erreur liquidation automatique VERT:', liqErr.message);
+          await logError('liquidation_automatique_vert', liqErr, { dossier_id: dossier.id });
+
+          statutApresCircuit = DossierDouane.STATUTS.EN_LIQUIDATION;
+          messageNotification = `Circuit VERT assigné, en attente de liquidation automatique. Erreur : ${liqErr.message}`;
+        }
 
         break;
 
@@ -202,7 +232,7 @@ const soumettreDeclaration = async (req, res) => {
         );
 
         // EN_ATTENTE_VALIDATION (pour le douanier)
-        const dossierJaune = (await DossierDouane.findById(dossier.id)).rows[0];
+        dossierJaune = (await DossierDouane.findById(dossier.id)).rows[0];
         await DossierDouane.transitionStatut(
           dossier.id, DossierDouane.STATUTS.EN_ATTENTE_VALIDATION, dossierJaune.version,
           { circuit }
@@ -220,7 +250,7 @@ const soumettreDeclaration = async (req, res) => {
         );
 
         // EN_ATTENTE_VALIDATION (pour le douanier)
-        const dossierRouge = (await DossierDouane.findById(dossier.id)).rows[0];
+        dossierRouge = (await DossierDouane.findById(dossier.id)).rows[0];
         await DossierDouane.transitionStatut(
           dossier.id, DossierDouane.STATUTS.EN_ATTENTE_VALIDATION, dossierRouge.version,
           { circuit }

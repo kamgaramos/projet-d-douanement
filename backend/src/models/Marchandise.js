@@ -11,7 +11,7 @@ const createTable = async () => {
       poids DECIMAL(10, 2),
       valeur DECIMAL(10, 2),
       total_taxes DECIMAL(10, 2) DEFAULT 0.00,
-      code_sh VARCHAR(20) REFERENCES nomenclature_douaniere(code_sh),
+      code_sh VARCHAR(20) REFERENCES nomenclature_tarifaire(code_sh),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);

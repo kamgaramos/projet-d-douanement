@@ -28,15 +28,23 @@ const Declaration = {
     `, []);
   },
 
-  // --- MÉTHODE CRÉATION AJOUTÉE ICI ---
+  // --- MÉTHODE CRÉATION ---
   create: async (data) => {
-    const reference = `DEC-${Date.now()}`; 
+    const reference = data.reference || `DEC-${Date.now()}`;
     const sql = `
-      INSERT INTO declarations (reference, declarant_id, statut)
-      VALUES ($1, $2, $3)
+      INSERT INTO declarations (reference, declarant_id, statut, port_depart, port_arrivee, date_embarquement, montant_droits_douane)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
-    return executeQuery(sql, [reference, data.declarant_id, data.statut]);
+    return executeQuery(sql, [
+      reference,
+      data.declarant_id,
+      data.statut || 'brouillon',
+      data.port_depart || null,
+      data.port_arrivee || null,
+      data.date_embarquement || null,
+      data.montant_droits_douane || 0
+    ]);
   },
 
   findById: (id) =>
@@ -86,7 +94,13 @@ const Declaration = {
       return executeQuery('UPDATE declarations SET statut = $1, transitaire_id = $2 WHERE id = $3 RETURNING *', [statut, transitaire_id, id]);
     }
     return executeQuery('UPDATE declarations SET statut = $1 WHERE id = $2 RETURNING *', [statut, id]);
-  }
+  },
+
+  updateMontantDroits: (id, montant) =>
+    executeQuery('UPDATE declarations SET montant_droits_douane = $1 WHERE id = $2 RETURNING *', [montant, id]),
+
+  accumulerMontant: (id, montant) =>
+    executeQuery('UPDATE declarations SET montant_droits_douane = montant_droits_douane + $1 WHERE id = $2 RETURNING *', [montant, id]),
 };
 
 module.exports = Declaration;

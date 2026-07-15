@@ -68,6 +68,23 @@
         </select>
       </div>
 
+      <!-- Champ Numéro d'agrément (affiché uniquement pour le rôle transitaire) -->
+      <div class="form-group" *ngIf="registerForm.get('role')?.value === 'transitaire'">
+        <label for="num_agrement">Numéro d'agrément en douane :</label>
+        <input
+          type="text"
+          id="num_agrement"
+          formControlName="num_agrement"
+          class="form-control"
+          [class.is-invalid]="f['num_agrement'].invalid && f['num_agrement'].touched"
+          placeholder="Ex: CAD-2026-9875"
+        />
+        <div *ngIf="f['num_agrement'].invalid && f['num_agrement'].touched" class="invalid-feedback">
+          <div *ngIf="f['num_agrement'].errors?.['required']">Le numéro d'agrément est obligatoire pour les transitaires</div>
+          <div *ngIf="f['num_agrement'].errors?.['minlength']">Minimum 4 caractères</div>
+        </div>
+      </div>
+
       <!-- Messages -->
       <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
       <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>

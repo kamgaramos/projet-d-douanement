@@ -3,7 +3,7 @@ const Notification = require('../models/Notification');
 const obtenirMesAlertes = async (req, res) => {
   try {
     const user_id = req.user.id;
-    const { limit = 50, unread_only = 'false' } = req.query;
+    const { limit = 50, unread_only = 'false', declaration_id } = req.query;
 
     // Validation des paramètres
     const limitInt = parseInt(limit);
@@ -16,7 +16,13 @@ const obtenirMesAlertes = async (req, res) => {
 
     // Récupérer les notifications selon le filtre
     let notificationsResult;
-    if (unread_only === 'true') {
+    if (declaration_id) {
+      const declId = parseInt(declaration_id);
+      if (isNaN(declId)) {
+        return res.status(400).json({ error: 'declaration_id doit être un nombre' });
+      }
+      notificationsResult = await Notification.findByDeclaration(declId, user_id, limitInt);
+    } else if (unread_only === 'true') {
       notificationsResult = await Notification.findUnreadByUser(user_id);
     } else {
       notificationsResult = await Notification.findByUser(user_id, limitInt);

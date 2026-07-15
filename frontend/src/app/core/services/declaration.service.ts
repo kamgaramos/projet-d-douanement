@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DeclarationService {
-  // L'URL de ton backend Node.js
-  private apiUrl = 'http://localhost:5000/api/declarations';
+  private apiUrl = `${environment.apiUrl}/declarations`;
 
   constructor(
     private http: HttpClient,

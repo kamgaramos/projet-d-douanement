@@ -232,9 +232,7 @@
             <div class="item-row doc-item" *ngFor="let doc of documents">
               <span class="doc-icon">{{ getFileIcon(doc.mime_type) }}</span>
               <div class="doc-info">
-                <a [href]="getDocumentDownloadUrl(doc.id)" target="_blank" class="doc-name">
-                  {{ doc.nom_fichier }}
-                </a>
+                <button type="button" class="doc-name" (click)="downloadDocument(doc.id, doc.nom_fichier)" style="border:none; background:none; padding:0; color:#2563eb; cursor:pointer; text-decoration:underline; font-weight:600;">{{ doc.nom_fichier }}</button>
                 <div class="doc-meta">
                   <small class="doc-type">{{ doc.type_document }}</small>
                   <small class="doc-size">{{ formatFileSize(doc.taille_fichier) }}</small>

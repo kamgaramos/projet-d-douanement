@@ -12,6 +12,7 @@ const Offre = require('./Offre');
 const Document = require('./Document');
 const Message = require('./Message');
 const Notification = require('./Notification');
+const Nomenclature = require('./Nomenclature');
 const DossierDouane = require('./DossierDouane');
 const ActionDouane = require('./ActionDouane');
 const Taxe = require('./Taxe');
@@ -29,8 +30,6 @@ const initModels = async () => {
     console.log('  ✓ declarations');
 
     // 2. Tables dépendantes (FK vers users / declarations)
-    await Marchandise.createTable();
-    console.log('  ✓ marchandises');
     await Offre.createTable();
     console.log('  ✓ offres');
     await Document.createTable();
@@ -41,6 +40,10 @@ const initModels = async () => {
     console.log('  ✓ notifications');
 
     // 3. NOUVELLES TABLES (workflow douane)
+    await Nomenclature.createTable();
+    console.log('  ✓ nomenclature_tarifaire');
+    await Marchandise.createTable();
+    console.log('  ✓ marchandises');
     await DossierDouane.createTable();
     console.log('  ✓ dossiers_douane');
     await ActionDouane.createTable();
@@ -49,6 +52,12 @@ const initModels = async () => {
     console.log('  ✓ taxes');
 
     // 4. Mise à jour des colonnes existantes
+    await query(`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS statut_validation VARCHAR(20) DEFAULT 'APPROVED',
+      ADD COLUMN IF NOT EXISTS num_agrement VARCHAR(50);
+    `);
+
     await query(`
       ALTER TABLE declarations
       ADD COLUMN IF NOT EXISTS transitaire_id INT REFERENCES users(id) ON DELETE SET NULL,
@@ -90,6 +99,7 @@ module.exports = {
   Document,
   Message,
   Notification,
+  Nomenclature,
   DossierDouane,
   ActionDouane,
   Taxe,

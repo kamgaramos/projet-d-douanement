@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const Declaration = require('../models/Declaration');
 const Marchandise = require('../models/Marchandise');
+const { estimerDroitsDouane } = require('../utils/liquidationHelper');
 
 // --- Lister toutes les déclarations (enrichies avec les offres) ---
 const listerDeclarations = async (req, res) => {
@@ -88,9 +89,13 @@ const creerDeclaration = async (req, res) => {
     }
 
     // 2. Création de la marchandise associée
-    await Marchandise.create(declaration.id, description, typeMarchandise, poids, valeur, code_sh);
+    await Marchandise.create(declaration.id, description, typeMarchandise, poids, valeur, 0, code_sh);
 
-    res.status(201).json(declaration);
+    // 3. Estimer les droits de douane initiaux (GUCE)
+    await estimerDroitsDouane(declaration.id);
+
+    const finalDecResult = await db.query('SELECT * FROM declarations WHERE id = $1', [declaration.id]);
+    res.status(201).json(finalDecResult.rows[0]);
   } catch (error) {
     // Log précis pour voir pourquoi l'enregistrement échoue
     console.error("ERREUR DÉTAILLÉE DANS CREER_DECLARATION :", error);
@@ -101,8 +106,8 @@ const creerDeclaration = async (req, res) => {
 // --- Autres fonctions basiques ---
 const getDeclaration = async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM declarations WHERE id = $1', [req.params.id]);
-    res.status(200).json(result.rows[0]);
+    const result = await Declaration.findById(req.params.id);
+    res.status(200).json(result.rows[0] || null);
   } catch (error) {
     res.status(500).json({ error: 'Erreur lors de la récupération' });
   }
@@ -110,6 +115,14 @@ const getDeclaration = async (req, res) => {
 
 const supprimerDeclaration = async (req, res) => {
   try {
+    const declResult = await Declaration.findById(req.params.id);
+    if (declResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Déclaration non trouvée' });
+    }
+    const decl = declResult.rows[0];
+    if (decl.declarant_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès refusé', details: 'Vous n\'êtes pas le propriétaire de cette déclaration' });
+    }
     await db.query('DELETE FROM declarations WHERE id = $1', [req.params.id]);
     res.status(200).json({ message: 'Supprimé avec succès' });
   } catch (error) {
@@ -133,9 +146,12 @@ const publierDeclaration = async (req, res) => {
     const declaration = declarationResult.rows[0];
 
     if (description) {
-      await Marchandise.create(declaration.id, description, typeMarchandise, parseFloat(poids), parseFloat(valeur), code_sh);
+      await Marchandise.create(declaration.id, description, typeMarchandise, parseFloat(poids), parseFloat(valeur), 0, code_sh);
+      // Estimer les droits de douane initiaux (GUCE)
+      await estimerDroitsDouane(declaration.id);
     }
-    res.status(201).json({ message: 'Déclaration publiée', declaration });
+    const finalDecResult = await db.query('SELECT * FROM declarations WHERE id = $1', [declaration.id]);
+    res.status(201).json({ message: 'Déclaration publiée', declaration: finalDecResult.rows[0] });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur', details: error.message });
   }
@@ -151,6 +167,16 @@ const changerStatut = async (req, res) => {
       return res.status(401).json({ error: 'Non authentifié' });
     }
 
+    // Vérifier que l'utilisateur est propriétaire ou admin
+    const declResult = await Declaration.findById(id);
+    if (declResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Déclaration non trouvée' });
+    }
+    const decl = declResult.rows[0];
+    if (decl.declarant_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès refusé', details: 'Vous n\'êtes pas le propriétaire de cette déclaration' });
+    }
+
     // On force la valeur souhaitée par ton besoin (soumettre -> EN_ATTENTE_OFFRES)
     // si aucune valeur n'est fournie.
     const statutFinal = statut || 'EN_ATTENTE_OFFRES';
@@ -158,7 +184,7 @@ const changerStatut = async (req, res) => {
     // updateStatut gère aussi transitaire_id si nécessaire.
     const result = await Declaration.updateStatut(id, statutFinal, null);
 
-    // Certains drivers renvoient rows; d’autres non.
+    // Certains drivers renvoient rows; d'autres non.
     const updated = result?.rows?.[0] || result;
 
     return res.status(200).json({ message: 'Statut mis à jour', declaration: updated });
@@ -167,11 +193,9 @@ const changerStatut = async (req, res) => {
     return res.status(500).json({ error: 'Erreur serveur lors du changement de statut', details: error.message });
   }
 };
-const accepterDeclaration = (req, res) => res.status(200).json({ message: "À implémenter" });
-const accepterOffre = (req, res) => res.status(200).json({ message: "À implémenter" });
 const listerMarketplace = (req, res) => res.status(200).json({ message: "À implémenter" });
 
 module.exports = {
-  creerDeclaration, listerDeclarations, getDeclaration, changerStatut, 
-  accepterDeclaration, accepterOffre, supprimerDeclaration, publierDeclaration, listerMarketplace
+  creerDeclaration, listerDeclarations, getDeclaration, changerStatut,
+  supprimerDeclaration, publierDeclaration, listerMarketplace
 };

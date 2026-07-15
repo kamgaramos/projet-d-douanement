@@ -22,7 +22,7 @@ const app = express();
 
 // Middlewares
 app.use(cors({
-  origin: '*', 
+  origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -55,6 +55,23 @@ app.use('/api/douane', douaneRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+});
+
+// --- Route 404 pour les endpoints inconnus ---
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route non trouvée',
+    details: `Aucun endpoint pour ${req.method} ${req.url}`
+  });
+});
+
+// --- Gestionnaire d'erreurs global ---
+app.use((err, req, res, next) => {
+  console.error('[ERREUR] Non gérée:', err);
+  res.status(err.status || 500).json({
+    error: 'Erreur serveur interne',
+    details: process.env.NODE_ENV === 'production' ? 'Une erreur est survenue' : err.message
+  });
 });
 
 // Initialisation du serveur...

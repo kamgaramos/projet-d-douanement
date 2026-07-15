@@ -177,6 +177,21 @@ const Notification = {
       RETURNING id
     `, []),
 
+  // Récupérer les notifications pour une déclaration spécifique (historique)
+  findByDeclaration: (declaration_id, user_id, limit = 50) =>
+    executeQuery(`
+      SELECT
+        n.*,
+        d.reference as declaration_reference,
+        d.port_depart,
+        d.port_arrivee
+      FROM notifications n
+      LEFT JOIN declarations d ON n.declaration_id = d.id
+      WHERE n.declaration_id = $1 AND n.user_id = $2
+      ORDER BY n.created_at DESC
+      LIMIT $3
+    `, [declaration_id, user_id, limit]),
+
   // Récupérer les notifications récentes pour une déclaration
   findRecentByDeclaration: (declaration_id, hours = 24) =>
     executeQuery(`

@@ -27,10 +27,12 @@
     </div>
   </section>
 
-  <!-- ⭐ Section Dossiers Douane (transitaire) -->
   <section class="table-section" *ngIf="currentUser?.role === 'transitaire' && dossiersDouane.length > 0">
     <div class="table-header">
       <h2>📂 Mes dossiers de dédouanement</h2>
+      <button class="btn btn-secondary" (click)="afficherHistoriquePaiements()">
+        💳 Historique paiements
+      </button>
     </div>
     <div class="table-responsive">
       <table class="custom-table">
@@ -50,7 +52,7 @@
             <td><strong>{{ dossier.reference }}</strong></td>
             <td>{{ dossier.declaration_reference || 'DEC-' + dossier.declaration_id }}</td>
             <td>
-              <span class="badge badge-{{ dossier.statut === 'DOCUMENTS_ATTENDUS' || dossier.statut === 'EN_ATTENTE_VALIDATION' || dossier.statut === 'EN_ATTENTE_PAIEMENT' ? 'warning' : dossier.statut === 'VALIDE' || dossier.statut === 'PAYE' || dossier.statut === 'BAE_GENERE' ? 'success' : dossier.statut === 'REJETE' ? 'danger' : 'info' }}">
+              <span class="badge {{ getBadgeClass(dossier.statut) }}">
                 {{ dossier.statut }}
               </span>
             </td>
@@ -65,7 +67,15 @@
             <td>{{ dossier.montant_taxes > 0 ? (dossier.montant_taxes + ' FCFA') : '—' }}</td>
             <td>{{ dossier.bae_reference || '—' }}</td>
             <td>
-              <button class="btn-action" (click)="voirDetails(dossier)">👁️ Détails</button>
+              <button class="btn-action" (click)="voirDetails(dossier)" title="Détails">👁️</button>
+              <button *ngIf="estEnAttentePaiement(dossier.statut)"
+                class="btn-payment" (click)="payerDossier(dossier)"
+                title="Payer les taxes e-GUCE" style="margin-left:4px;">
+                💳 Payer
+              </button>
+              <span *ngIf="estPaye(dossier.statut) && dossier.bae_reference" class="badge badge-success" style="margin-left:4px;">
+                ✅ BAE
+              </span>
             </td>
           </tr>
         </tbody>
@@ -119,12 +129,7 @@
             <td>{{ item.montant_droits_douane || '0.00' }}</td>
             
             <td>
-              <span class="badge" [ngClass]="{
-                'badge-warning': item.statut === 'En attente' || item.statut === 'en attente',
-                'badge-success': item.statut === 'Approuvé' || item.statut === 'approuvé',
-                'badge-danger': item.statut === 'Rejeté' || item.statut === 'rejeté',
-                'badge-secondary': item.statut === 'brouillon' || item.statut === 'Draft'
-              }">{{ item.statut }}</span>
+              <span class="badge {{ getBadgeClass(item.statut) }}">{{ item.statut }}</span>
             </td>
             <td>
               <span [ngClass]="{
@@ -270,7 +275,7 @@
           <select id="code_sh" formControlName="code_sh" class="form-control">
             <option value="" selected disabled>-- Choisir une désignation --</option>
             <option *ngFor="let item of nomenclatures" [value]="item.code_sh">
-              Code: {{ item.code_sh }} | Taux: {{ item.taux_droit_douane }}%
+              Code: {{ item.code_sh }} | Taux: {{ item.taux_droit }}%
             </option>
           </select>
           <div *ngIf="nomenclatureLoading" class="error-msg" style="margin-top: 6px;">Chargement...</div>
@@ -488,6 +493,139 @@
           [declarationId]="selectedDeclarationId"
           [declarationReference]="selectedDeclarationRef">
         </app-chat>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : Paiement e-GUCE -->
+  <div class="modal-overlay" *ngIf="showPaymentModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>💳 Paiement e-GUCE</h2>
+        <button class="close-btn" (click)="fermerPaiement()">&times;</button>
+      </div>
+
+      <p class="modal-subtitle" *ngIf="selectedPaiementDossier">
+        Dossier : <strong>{{ selectedPaiementDossier.reference }}</strong>
+      </p>
+
+      <!-- Détail des taxes -->
+      <div class="payment-details" *ngIf="taxeDetail">
+        <table class="payment-table">
+          <thead>
+            <tr><th>Libellé</th><th>Montant</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>📦 Valeur marchandise</td>
+              <td class="montant">{{ formatMontant(taxeDetail.valeur_marchandise) }}</td>
+            </tr>
+            <tr>
+              <td>📊 Taux droit de douane</td>
+              <td>{{ taxeDetail.taux_droit }} %</td>
+            </tr>
+            <tr>
+              <td>💰 Droits de douane</td>
+              <td class="montant">{{ formatMontant(taxeDetail.droits_douane) }}</td>
+            </tr>
+            <tr>
+              <td>🏷️ TVA (19.25%)</td>
+              <td class="montant">{{ formatMontant(taxeDetail.tva_montant) }}</td>
+            </tr>
+            <tr>
+              <td>📋 Frais accessoires (CSS)</td>
+              <td class="montant">{{ formatMontant(taxeDetail.frais_accessoires) }}</td>
+            </tr>
+            <tr>
+              <td>🏭 Frais de magasinage</td>
+              <td class="montant">{{ formatMontant(taxeDetail.frais_magasinage) }}</td>
+            </tr>
+            <tr class="total-row">
+              <td><strong>TOTAL TAXES</strong></td>
+              <td class="montant"><strong>{{ formatMontant(taxeDetail.total_taxes) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="loading-spinner" *ngIf="!taxeDetail && !paiementError">
+        ⏳ Chargement du détail des taxes...
+      </div>
+
+      <div class="payment-error" *ngIf="paiementError">
+        ❌ {{ paiementError }}
+      </div>
+
+      <!-- Reçu de paiement -->
+      <div class="payment-receipt" *ngIf="paiementSuccess">
+        <h3>✅ Paiement confirmé</h3>
+        <div class="receipt-details">
+          <div class="receipt-row">
+            <span>Réf. transaction :</span>
+            <strong>{{ paiementSuccess.paiement.transaction_id }}</strong>
+          </div>
+          <div class="receipt-row">
+            <span>Réf. paiement :</span>
+            <strong>{{ paiementSuccess.paiement.reference }}</strong>
+          </div>
+          <div class="receipt-row">
+            <span>Montant :</span>
+            <strong class="montant">{{ formatMontant(paiementSuccess.paiement.montant) }}</strong>
+          </div>
+          <div class="receipt-row" *ngIf="paiementSuccess.bae">
+            <span>BAE :</span>
+            <strong class="text-success">✅ {{ paiementSuccess.bae.reference }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="fermerPaiement()">
+          {{ paiementSuccess ? 'Fermer' : 'Annuler' }}
+        </button>
+        <button *ngIf="!paiementSuccess"
+          class="btn btn-primary"
+          [disabled]="!taxeDetail || paiementEnCours"
+          (click)="confirmerPaiement()">
+          {{ paiementEnCours ? '⏳ Paiement en cours...' : '💳 Payer via e-GUCE' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : Historique des paiements -->
+  <div class="modal-overlay" *ngIf="showPaymentHistory">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <h2>📜 Historique des paiements e-GUCE</h2>
+        <button class="close-btn" (click)="fermerHistoriquePaiements()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="paiementHistory.length === 0" class="text-muted">
+          Aucun paiement effectué pour le moment.
+        </div>
+        <table class="payment-table" *ngIf="paiementHistory.length > 0">
+          <thead>
+            <tr>
+              <th>Dossier</th>
+              <th>Montant</th>
+              <th>Statut</th>
+              <th>Réf. Paiement</th>
+              <th>Date</th>
+              <th>BAE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of paiementHistory">
+              <td>{{ p.dossier_reference }}</td>
+              <td class="montant">{{ p.montant_taxes > 0 ? p.montant_taxes.toLocaleString('fr-FR') + ' FCFA' : '—' }}</td>
+              <td><span class="badge {{ getBadgeClass(p.statut) }}">{{ p.statut }}</span></td>
+              <td>{{ p.reference_paiement || '—' }}</td>
+              <td>{{ p.date_paiement ? (p.date_paiement | date:'dd/MM/yyyy HH:mm') : '—' }}</td>
+              <td>{{ p.bae_reference || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

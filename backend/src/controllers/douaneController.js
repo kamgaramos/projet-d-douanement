@@ -13,8 +13,11 @@
  *   - Protégée par optimistic locking (version)
  */
 const DossierDouane = require('../models/DossierDouane');
+const Declaration = require('../models/Declaration');
 const ActionDouane = require('../models/ActionDouane');
 const Taxe = require('../models/Taxe');
+const Nomenclature = require('../models/Nomenclature');
+const { liquiderDossier } = require('../utils/liquidationHelper');
 const { creerNotification, NOTIFICATION_TYPES } = require('../utils/notificationHelper');
 const { withRetry, logError } = require('../utils/retryHelper');
 
@@ -25,43 +28,9 @@ const { withRetry, logError } = require('../utils/retryHelper');
  * Format : BAE-YYYYMMDD-XXXXX
  */
 function genererReferenceBAE() {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.random().toString(36).substr(2, 5).toUpperCase();
+  const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  const random = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `BAE-${date}-${random}`;
-}
-
-/**
- * Calcule et met à jour les taxes d'un dossier via le modèle Taxe.
- * Appel externe simulé vers CAMCIS/e-GUCE avec mécanisme de retry.
- */
-async function liquiderDossier(dossierId, declarationId, valeurMarchandise, tauxDroit, userId) {
-  const liquidationFn = async (attempt) => {
-    // Simule un appel à CAMCIS pour la liquidation
-    if (attempt > 0) {
-      // Sur les tentatives suivantes, on peut logger
-      console.log(`[LIQUIDATION] Tentative ${attempt + 1} pour le dossier ${dossierId}`);
-    }
-
-    const taxeResult = await Taxe.calculer(dossierId, declarationId, valeurMarchandise, tauxDroit);
-    return taxeResult.rows[0];
-  };
-
-  const result = await withRetry(liquidationFn, { maxRetries: 2, isRetryable: true });
-
-  if (!result.success) {
-    await logError('liquidation', result.error, { dossierId, declarationId });
-    throw new Error(`Échec de la liquidation après ${result.attempts} tentatives: ${result.error.message}`);
-  }
-
-  // Journaliser la liquidation
-  const db = require('../config/db');
-  await ActionDouane.enregistrer(
-    dossierId, userId, ActionDouane.TYPES_ACTION.LIQUIDER,
-    `Liquidation effectuée. Total taxes: ${result.data.total_taxes}`,
-    { total_taxes: result.data.total_taxes, tentative: result.attempts }
-  );
-
-  return result.data;
 }
 
 /**
@@ -195,8 +164,6 @@ const actionSurDossier = async (req, res) => {
       });
     }
 
-    const dossierMisAJour = transitionResult.rows[0];
-
     // ── 7. Journaliser l'action ──────────────────────────────────────────
     await ActionDouane.enregistrer(
       dossier.id, userId, action,
@@ -223,15 +190,10 @@ const actionSurDossier = async (req, res) => {
     let liquidationResult = null;
     if (action === DossierDouane.DECISIONS.VALIDE) {
       try {
-        const db = require('../config/db');
-        const declResult = await (db.query || db)(
-          'SELECT valeur FROM marchandises WHERE declaration_id = $1 LIMIT 1',
-          [dossier.declaration_id]
-        );
-        const valeur = declResult.rows.length > 0 ? parseFloat(declResult.rows[0].valeur) : 1000000;
-
         liquidationResult = await liquiderDossier(
-          dossier.id, dossier.declaration_id, valeur, 10, userId
+          dossier.id,
+          dossier.declaration_id,
+          userId
         );
 
         // Transition vers EN_LIQUIDATION
@@ -454,6 +416,16 @@ const payerDossier = async (req, res) => {
  */
 const listerDossiersDouane = async (req, res) => {
   try {
+    const userRole = req.user.role;
+
+    // Seuls les douaniers et admins peuvent lister les dossiers
+    if (userRole !== 'douanier' && userRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Accès refusé',
+        details: 'Seuls les douaniers peuvent consulter cette liste.'
+      });
+    }
+
     const { statut, circuit } = req.query;
     const result = await DossierDouane.findAll({ statut, circuit });
 
@@ -473,11 +445,21 @@ const listerDossiersDouane = async (req, res) => {
  */
 const historiqueDossier = async (req, res) => {
   try {
+    const userRole = req.user.role;
+
+    // Seuls les douaniers et admins peuvent voir l'historique complet
+    if (userRole !== 'douanier' && userRole !== 'admin') {
+      return res.status(403).json({
+        error: 'Accès refusé',
+        details: 'Seuls les douaniers peuvent consulter l\'historique.'
+      });
+    }
+
     const { id } = req.params;
     const actionsResult = await ActionDouane.findByDossier(id);
 
     res.status(200).json({
-      dossier_id: parseInt(id),
+      dossier_id: Number.parseInt(id),
       actions: actionsResult.rows || [],
     });
   } catch (error) {

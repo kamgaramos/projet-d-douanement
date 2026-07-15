@@ -6,6 +6,7 @@ import { DeclarationService } from '../core/services/declaration.service';
 import { OffreService } from '../core/services/offre.service';
 import { DossierService } from '../core/services/dossier.service';
 import { DocumentService, DocumentInfo } from '../core/services/document.service';
+import { NotificationService } from '../core/services/notification.service';
 import { ChatComponent } from '../chat/chat.component';
 
 @Component({
@@ -55,7 +56,8 @@ export class DeclarationDetailsComponent implements OnInit {
     private declarationService: DeclarationService,
     private offreService: OffreService,
     private dossierService: DossierService,
-    private documentService: DocumentService
+    private documentService: DocumentService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -117,7 +119,11 @@ export class DeclarationDetailsComponent implements OnInit {
   }
 
   retourAuDashboard(): void {
-    this.router.navigate(['/dashboard']);
+    if (this.currentUser?.role === 'douanier') {
+      this.router.navigate(['/douanier-dashboard']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 
   getStatutClass(statut: string): string {
@@ -244,9 +250,24 @@ export class DeclarationDetailsComponent implements OnInit {
     });
   }
 
-  /** URL de téléchargement */
-  getDocumentDownloadUrl(docId: number): string {
-    return this.documentService.getDownloadUrl(docId);
+  /** Télécharger un document */
+  downloadDocument(docId: number, filename: string): void {
+    this.documentService.downloadDocument(docId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Erreur téléchargement document:', err);
+        alert('Impossible de télécharger le document. Vérifiez vos autorisations et réessayez.');
+      }
+    });
   }
 
   /** Formater la taille */
@@ -329,10 +350,27 @@ export class DeclarationDetailsComponent implements OnInit {
   }
 
   chargerHistorique(): void {
-    this.historique = [
-      { date: new Date(Date.now() - 86400000), action: 'Déclaration créée', utilisateur: 'Vous' },
-      { date: new Date(Date.now() - 43200000), action: 'Déclaration publiée', utilisateur: 'Vous' }
-    ];
+    this.historique = [];
+    if (!this.declaration?.id) return;
+
+    // Utiliser les notifications comme historique d'activité
+    this.notificationService.obtenirMesAlertes(50, false).subscribe({
+      next: (data) => {
+        const notifs = (data.notifications || []).filter(
+          n => n.declaration?.id === this.declaration.id
+        );
+        this.historique = notifs.map(n => ({
+          date: n.created_at,
+          action: n.message,
+          utilisateur: '',
+          type: n.type
+        }));
+      },
+      error: (err) => {
+        console.error('Erreur chargement historique:', err);
+        this.historique = [];
+      }
+    });
   }
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -345,8 +383,27 @@ export class DeclarationDetailsComponent implements OnInit {
   }
 
   chargerNotifications(): void {
-    this.notifications = [
-      { id: 1, titre: 'Bienvenue', message: 'Module de notifications actif', date: new Date() }
-    ];
+    if (!this.declaration?.id) return;
+
+    this.notificationService.obtenirMesAlertes(50, false).subscribe({
+      next: (data) => {
+        const notifs = (data.notifications || []).filter(
+          n => n.declaration?.id === this.declaration.id
+        );
+        this.notifications = notifs.map(n => ({
+          id: n.id,
+          titre: n.type,
+          type: n.type,
+          message: n.message,
+          date: n.created_at,
+          created_at: n.created_at,
+          is_read: n.is_read
+        }));
+      },
+      error: (err) => {
+        console.error('Erreur chargement notifications:', err);
+        this.notifications = [];
+      }
+    });
   }
 }

@@ -11,6 +11,7 @@ const Declaration = require('../models/Declaration');
 const DossierDouane = require('../models/DossierDouane');
 const { creerNotification, NOTIFICATION_TYPES } = require('../utils/notificationHelper');
 const { logError } = require('../utils/retryHelper');
+const { estimerDroitsDouane } = require('../utils/liquidationHelper');
 
 // ─── Endpoints ──────────────────────────────────────────────────────────────
 
@@ -234,8 +235,10 @@ const accepterOffre = async (req, res) => {
         'DOSSIER_OUVERT',
         offre.transitaire_id
       );
+      // Estimer et mettre à jour les droits de douane de la déclaration (GUCE)
+      await estimerDroitsDouane(offre.declaration_id);
     } catch (declErr) {
-      console.error('[offreController] Erreur mise à jour statut déclaration:', declErr.message);
+      console.error('[offreController] Erreur mise à jour statut/droits déclaration:', declErr.message);
       // Non bloquant
     }
 

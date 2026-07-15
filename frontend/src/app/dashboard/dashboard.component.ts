@@ -6,6 +6,8 @@ import { DeclarationService } from '../core/services/declaration.service';
 import { CargaisonService } from '../core/services/cargaison.service';
 import { OffreService } from '../core/services/offre.service';
 import { DossierService } from '../core/services/dossier.service';
+import { NomenclatureService } from '../core/services/nomenclature.service';
+import { PaiementService, TaxeDetail } from '../core/services/paiement.service';
 import { ChatComponent } from '../chat/chat.component';
 
 @Component({
@@ -51,12 +53,18 @@ export class DashboardComponent implements OnInit {
     private declarationService: DeclarationService,
     private cargaisonService: CargaisonService,
     private offreService: OffreService,
-    private dossierService: DossierService
+    private dossierService: DossierService,
+    private nomenclatureService: NomenclatureService,
+    private paiementService: PaiementService
   ) {}
 
   ngOnInit(): void {
     const userJson = localStorage.getItem('user');
-    this.currentUser = userJson ? JSON.parse(userJson) : { name: 'kamga', role: 'declarant' };
+    if (!userJson) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.currentUser = JSON.parse(userJson);
 
     if (this.currentUser?.role === 'douanier') {
       this.router.navigate(['/douanier-dashboard']);
@@ -83,24 +91,18 @@ export class DashboardComponent implements OnInit {
   private loadNomenclature() {
     this.nomenclatureLoading = true;
     this.nomenclatureError = '';
-    const apiUrl = 'http://localhost:5000/api/nomenclature';
 
-    fetch(apiUrl)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json();
-      })
-      .then((data) => {
-        // Ajout d'un log pour vérifier la structure exacte des données reçues
-        console.log("Structure des nomenclatures reçues :", data);
+    this.nomenclatureService.getAll().subscribe({
+      next: (data) => {
         this.nomenclatures = Array.isArray(data) ? data : [];
         this.nomenclatureLoading = false;
-      })
-      .catch((err) => {
+      },
+      error: (err) => {
         console.error('Erreur GET /api/nomenclature:', err);
         this.nomenclatureError = 'Impossible de charger la nomenclature.';
         this.nomenclatureLoading = false;
-      });
+      }
+    });
   }
 
   // --- Reste des méthodes inchangées ---
@@ -190,9 +192,22 @@ export class DashboardComponent implements OnInit {
   loadRealData() {
     this.declarationService.getDeclarations().subscribe({
       next: (data) => {
-        this.declarations = data.sort((a, b) => {
-          const statusA = (a.statut || '').toLowerCase();
-          return statusA === 'en attente' ? -1 : 1;
+        this.declarations = [...data].sort((a, b) => {
+          const sA = this.normalizeStatus(a.statut);
+          const sB = this.normalizeStatus(b.statut);
+
+          // Ordre prioritaire : brouillon > en_attente_offres > dossier_ouvert > le reste
+          const order: Record<string, number> = {
+            'brouillon': 0,
+            'en_attente_offres': 1,
+            'dossier_ouvert': 2,
+            'en_cours_de_transport': 3,
+            'en_attente_validation_douane': 4,
+            'valide': 5,
+            'rejeté': 6,
+            'rejetée': 6,
+          };
+          return (order[sA] ?? 99) - (order[sB] ?? 99);
         });
       },
       error: (err) => console.error('Erreur chargement:', err)
@@ -221,7 +236,8 @@ export class DashboardComponent implements OnInit {
   }
 
   onLogout(): void {
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     this.router.navigate(['/login']);
   }
   
@@ -267,6 +283,29 @@ export class DashboardComponent implements OnInit {
     return 'Non assigné';
   }
 
+  getBadgeClass(statut: any): string {
+    const s = this.normalizeStatus(statut);
+    const map: Record<string, string> = {
+      'brouillon':              'badge-secondary',
+      'en_attente_offres':      'badge-warning',
+      'en_attente':             'badge-warning',
+      'dossier_ouvert':         'badge-info',
+      'en_cours_de_transport':  'badge-info',
+      'approuvé':               'badge-success',
+      'approuvée':              'badge-success',
+      'valide':                 'badge-success',
+      'paye':                   'badge-success',
+      'bae_genere':             'badge-success',
+      'rejeté':                 'badge-danger',
+      'rejetée':                'badge-danger',
+      'en_liquidation':         'badge-primary',
+      'en_attente_paiement':    'badge-warning',
+      'documents_attendus':     'badge-warning',
+      'complement_attendu':     'badge-warning',
+    };
+    return map[s] || 'badge-default';
+  }
+
   /** Nombre d'offres reçues pour une déclaration */
   getOffreCount(item: any): number {
     return item?.offre_count || 0;
@@ -282,6 +321,110 @@ export class DashboardComponent implements OnInit {
       },
       error: (err) => console.error('Erreur chargement dossiers douane:', err)
     });
+  }
+
+  // ── Paiement e-GUCE ───────────────────────────────────────────────────
+
+  showPaymentModal: boolean = false;
+  selectedPaiementDossier: any = null;
+  taxeDetail: TaxeDetail | null = null;
+  paiementEnCours: boolean = false;
+  paiementSuccess: any = null;
+  paiementError: string = '';
+  paiementHistory: any[] = [];
+  showPaymentHistory: boolean = false;
+
+  /** Ouvrir le modal de paiement pour un dossier */
+  payerDossier(dossier: any): void {
+    this.selectedPaiementDossier = dossier;
+    this.taxeDetail = null;
+    this.paiementSuccess = null;
+    this.paiementError = '';
+    this.showPaymentModal = true;
+
+    // Charger le détail des taxes
+    this.paiementService.getTaxes(dossier.id).subscribe({
+      next: (data) => {
+        this.taxeDetail = data.taxe;
+      },
+      error: (err) => {
+        console.error('Erreur chargement taxes:', err);
+        this.paiementError = 'Impossible de charger le détail des taxes.';
+      }
+    });
+  }
+
+  /** Fermer le modal de paiement */
+  fermerPaiement(): void {
+    this.showPaymentModal = false;
+    this.selectedPaiementDossier = null;
+    this.taxeDetail = null;
+    this.paiementSuccess = null;
+    this.paiementError = '';
+    this.paiementEnCours = false;
+  }
+
+  /** Confirmer et exécuter le paiement e-GUCE */
+  confirmerPaiement(): void {
+    if (!this.selectedPaiementDossier) return;
+
+    if (!confirm('Confirmer le paiement e-GUCE de ' +
+      (this.taxeDetail?.total_taxes || this.selectedPaiementDossier.montant_taxes) +
+      ' FCFA ?')) {
+      return;
+    }
+
+    this.paiementEnCours = true;
+    this.paiementError = '';
+
+    this.paiementService.payer(this.selectedPaiementDossier.id).subscribe({
+      next: (response) => {
+        this.paiementSuccess = response;
+        this.paiementEnCours = false;
+        this.loadDossiersDouane();
+      },
+      error: (err) => {
+        this.paiementEnCours = false;
+        this.paiementError = err.error?.details || err.error?.error || 'Erreur lors du paiement';
+        console.error('Erreur paiement:', err);
+      }
+    });
+  }
+
+  /** Afficher/masquer l'historique des paiements */
+  afficherHistoriquePaiements(): void {
+    this.showPaymentHistory = !this.showPaymentHistory;
+    if (this.showPaymentHistory && this.paiementHistory.length === 0) {
+      this.paiementService.getHistorique().subscribe({
+        next: (data) => {
+          this.paiementHistory = data.paiements || [];
+        },
+        error: (err) => {
+          console.error('Erreur chargement historique paiements:', err);
+        }
+      });
+    }
+  }
+
+  fermerHistoriquePaiements(): void {
+    this.showPaymentHistory = false;
+  }
+
+  /** Vérifie si un dossier est en attente de paiement */
+  estEnAttentePaiement(statut: string): boolean {
+    return this.normalizeStatus(statut) === 'en_attente_paiement';
+  }
+
+  /** Vérifie si le paiement a été effectué */
+  estPaye(statut: string): boolean {
+    const s = this.normalizeStatus(statut);
+    return s === 'paye' || s === 'bae_genere';
+  }
+
+  /** Formater un montant */
+  formatMontant(montant: number): string {
+    if (!montant && montant !== 0) return '—';
+    return montant.toLocaleString('fr-FR') + ' FCFA';
   }
 }
 

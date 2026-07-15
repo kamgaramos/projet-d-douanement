@@ -91,7 +91,7 @@
                   title="Voir les documents"
                   (click)="voirDocuments(declaration.id)"
                   style="background: #3b82f6; color: white; padding: 8px; margin-right: 8px; border: none; border-radius: 4px; cursor: pointer;">
-                  📄 Documents
+                  📄 {{ selectedDeclarationId === declaration.id ? 'Cacher' : 'Voir' }} les documents
                 </button>
 
                 <button
@@ -114,6 +114,116 @@
             <td colspan="8" class="text-center empty-message">
               🎉 Aucune déclaration en attente de validation.
               <br><small>Toutes les déclarations ont été traitées.</small>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="selectedDeclarationId !== null" class="documents-panel" style="margin-top: 1.5rem; padding: 1rem; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb;">
+        <h3 style="margin-bottom: 0.75rem;">📄 Documents de la déclaration #{{ selectedDeclarationId }}</h3>
+        <p style="margin: 0.5rem 0 1rem 0; color: #666; font-size: 0.95rem;" *ngIf="selectedDeclaration">
+          <strong>{{ selectedDeclaration.reference }}</strong> | Déclarant: <strong>{{ selectedDeclaration.declarant_id }}</strong> | Transitaire: <strong>{{ selectedDeclaration.transitaire_id || '(non assigné)' }}</strong>
+        </p>
+
+        <div *ngIf="documentsLoading" class="loading-spinner">
+          ⏳ Chargement des documents...
+        </div>
+
+        <div *ngIf="documentsError && !documentsLoading" class="error-message" style="color: #b91c1c;">
+          ❌ {{ documentsError }}
+        </div>
+
+        <div *ngIf="!documentsLoading && !documentsError">
+          <div *ngIf="selectedDeclarationDocuments.length > 0; else noDocs">
+            <!-- Grouper par uploadeur -->
+            <div *ngFor="let uploaderGroup of (getDocumentsGroupedByUploader() | keyvalue)" style="margin-bottom: 1.5rem;">
+              <h4 style="padding: 0.75rem; background: #e5e7eb; border-radius: 5px; margin-bottom: 0.5rem; display: flex; align-items: center;">
+                <span style="font-size: 1.2rem; margin-right: 0.5rem;">👤</span>
+                <span>{{ uploaderGroup.key }}</span>
+                <span style="margin-left: auto; font-size: 0.9rem; color: #666;">({{ uploaderGroup.value.length }} fichier(s))</span>
+              </h4>
+              
+              <div class="docs-list" style="display: grid; gap: 0.75rem;">
+                <div *ngFor="let doc of uploaderGroup.value" class="doc-card" style="padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: #ffffff;">
+                  <div>
+                    <div style="font-weight: 600;">{{ doc.nom_fichier }}</div>
+                    <div style="font-size: 0.9rem; color: #4b5563;">
+                      {{ doc.type_document }} • {{ formatFileSize(doc.taille_fichier) }} • {{ doc.uploaded_at | date:'dd/MM/yyyy HH:mm' }}
+                    </div>
+                  </div>
+                  <button type="button" (click)="downloadDocument(doc.id, doc.nom_fichier)" class="doc-download" style="padding: 0.5rem 0.75rem; background: #2563eb; color: white; border-radius: 5px; border: none; cursor: pointer; white-space: nowrap;">⬇️ Télécharger</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <ng-template #noDocs>
+            <div style="color: #4b5563;">Aucun document trouvé pour cette déclaration.</div>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section Validation des Comptes Transitaires (KYC) -->
+  <section class="validation-section" style="margin-top: 2.5rem;">
+    <div class="section-header">
+      <h2>👤 Comptes Transitaires En Attente d'Approbation (KYC)</h2>
+      <button class="btn btn-secondary" (click)="chargerTransitairesEnAttente()" [disabled]="transitairesLoading">
+        {{ transitairesLoading ? '🔄 Actualisation...' : '🔄 Actualiser' }}
+      </button>
+    </div>
+
+    <div class="loading-spinner" *ngIf="transitairesLoading">
+      <p>⏳ Chargement des transitaires en attente...</p>
+    </div>
+
+    <div class="table-responsive" *ngIf="!transitairesLoading">
+      <table class="validation-table">
+        <thead>
+          <tr>
+            <th>👤 Nom d'utilisateur</th>
+            <th>📧 E-mail</th>
+            <th>💳 Numéro d'Agrément</th>
+            <th>📅 Date d'Inscription</th>
+            <th>⚡ Actions KYC</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let transitaire of transitairesEnAttente" class="declaration-row">
+            <td>
+              <strong>{{ transitaire.username }}</strong>
+            </td>
+            <td>
+              {{ transitaire.email }}
+            </td>
+            <td>
+              <span class="type-badge" style="background-color: #f59e0b; color: white; font-weight: 600; padding: 4px 8px; border-radius: 4px;">
+                🔑 {{ transitaire.num_agrement }}
+              </span>
+            </td>
+            <td class="date-cell">
+              {{ transitaire.created_at | date:'dd/MM/yyyy HH:mm' }}
+            </td>
+            <td class="actions-cell">
+              <div class="validation-buttons">
+                <button
+                  class="btn-validation approve"
+                  title="Approuver ce transitaire"
+                  (click)="validerTransitaire(transitaire.id, 'APPROVED')">
+                  ✅ Approuver
+                </button>
+                <button
+                  class="btn-validation reject"
+                  title="Rejeter ce transitaire"
+                  (click)="validerTransitaire(transitaire.id, 'REJECTED')">
+                  ❌ Rejeter
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="transitairesEnAttente.length === 0 && !transitairesLoading" class="empty-row">
+            <td colspan="5" class="text-center empty-message">
+              🎉 Aucun compte transitaire en attente d'approbation.
             </td>
           </tr>
         </tbody>

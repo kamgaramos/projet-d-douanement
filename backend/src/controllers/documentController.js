@@ -248,11 +248,14 @@ const telechargerDocument = async (req, res) => {
     const document = documentResult.rows[0];
 
     // Vérifier les permissions
+    const offreAcceptee = await aOffreAcceptee(document.declaration_id, user_id);
     const canDownload = (
       user_role === 'admin' ||
       user_role === 'douanier' ||
       document.declarant_id === user_id ||
-      document.transitaire_id === user_id
+      document.transitaire_id === user_id ||
+      document.uploaded_by === user_id ||
+      offreAcceptee
     );
 
     if (!canDownload) {
@@ -304,10 +307,11 @@ const supprimerDocument = async (req, res) => {
 
     const document = documentResult.rows[0];
 
-    // Vérifier les permissions (seul le propriétaire ou admin peut supprimer)
+    // Vérifier les permissions (admin, ou propriétaire de la déclaration, ou uploader du document)
     const canDelete = (
       user_role === 'admin' ||
-      (document.declarant_id === user_id && document.uploaded_by === user_id)
+      document.declarant_id === user_id ||
+      document.uploaded_by === user_id
     );
 
     if (!canDelete) {

@@ -385,3 +385,117 @@
   color: #059669;
   font-weight: 700;
 }
+
+/* --- PAIEMENT e-GUCE --- */
+.btn-payment {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+.btn-payment:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+/* Tableau des taxes */
+.payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+.payment-table th {
+  background: #f8fafc;
+  padding: 0.75rem;
+  text-align: left;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 2px solid #e2e8f0;
+}
+.payment-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.95rem;
+}
+.payment-table td.montant {
+  text-align: right;
+  font-weight: 600;
+  color: #0f172a;
+}
+.payment-table .total-row {
+  background: #f0fdf4;
+}
+.payment-table .total-row td {
+  font-weight: 700;
+  border-bottom: 2px solid #10b981;
+}
+
+.payment-error {
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* Reçu de paiement */
+.payment-receipt {
+  background: #f0fdf4;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+.payment-receipt h3 {
+  margin: 0 0 1rem 0;
+  color: #065f46;
+  font-size: 1.1rem;
+}
+.receipt-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #a7f3d0;
+}
+.receipt-row:last-child {
+  border-bottom: none;
+}
+.receipt-row span {
+  color: #475569;
+}
+.receipt-row strong {
+  color: #0f172a;
+}
+.receipt-row strong.montant {
+  color: #059669;
+  font-size: 1.1rem;
+}
+
+.modal-wide {
+  width: 750px;
+  max-width: 95%;
+}
+
+.modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 2rem;
+  color: #475569;
+}

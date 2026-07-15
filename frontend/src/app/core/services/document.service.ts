@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface DocumentInfo {
   id: number;
@@ -27,7 +28,7 @@ export interface DocumentsResponse {
   providedIn: 'root'
 })
 export class DocumentService {
-  private apiUrl = 'http://localhost:5000/api/documents';
+  private apiUrl = `${environment.apiUrl}/documents`;
 
   constructor(private http: HttpClient) {}
 
@@ -50,6 +51,12 @@ export class DocumentService {
   }
 
   /** Télécharger un document */
+  downloadDocument(documentId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/download/${documentId}`, {
+      responseType: 'blob'
+    });
+  }
+
   getDownloadUrl(documentId: number): string {
     return `${this.apiUrl}/download/${documentId}`;
   }
