@@ -27,17 +27,34 @@ const register = async (req, res) => {
   try {
     const hashed = await bcrypt.hash(password, 10);
     const { rows } = await User.create(
-      username, 
-      email, 
-      hashed, 
-      normalizedRole, 
-      statut_validation, 
+      username,
+      email,
+      hashed,
+      normalizedRole,
+      statut_validation,
       normalizedRole === 'transitaire' ? num_agrement.trim() : null
     );
     res.status(201).json(rows[0]);
-  } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ error: 'Email déjà utilisé' });
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("ERREUR DETECTEE : ", error);
+    console.error("STACK :", error?.stack);
+
+    // logs utiles pour diagnostiquer rapidement en prod/Railway
+    console.error("PAYLOAD REGISTER:", {
+      username,
+      email,
+      role: normalizedRole,
+      num_agrement: normalizedRole === 'transitaire' ? num_agrement : undefined,
+    });
+
+    if (error?.code === '23505') {
+      return res.status(409).json({ error: 'Email déjà utilisé' });
+    }
+
+    return res.status(500).json({
+      error: 'Erreur serveur lors de l\'inscription',
+      details: error?.message,
+    });
   }
 };
 
