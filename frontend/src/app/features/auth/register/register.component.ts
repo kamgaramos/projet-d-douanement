@@ -15,7 +15,6 @@ export class RegisterComponent {
 
   availableRoles = [
     { value: 'declarant', label: 'Déclarant' },
-    { value: 'douanier', label: 'Douanier' },
     { value: 'transitaire', label: 'Transitaire' }
   ];
 
